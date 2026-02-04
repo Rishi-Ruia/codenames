@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codenames Online</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">CODENAMES</h1>
+            <div class="subtitle">Online Edition</div>
+        </header>
+
+        <!-- Game Setup Modal -->
+        <div id="setup-modal" class="modal">
+            <div class="modal-content">
+                <h2>Welcome to Codenames</h2>
+                <div class="setup-options">
+                    <button id="new-game-btn" class="btn btn-primary btn-large">
+                        <span class="btn-icon">🎮</span>
+                        New Game
+                    </button>
+                    <div class="divider">
+                        <span>or</span>
+                    </div>
+                    <div class="join-game">
+                        <label for="game-code-input">Enter Game Code:</label>
+                        <div class="input-group">
+                            <input type="text" id="game-code-input" placeholder="e.g., ABC123" maxlength="10">
+                            <button id="join-game-btn" class="btn btn-secondary">Join</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Role Selection Modal -->
+        <div id="role-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Choose Your Role</h2>
+                <p class="game-code-display">Game Code: <span id="display-game-code"></span></p>
+                <div class="role-selection">
+                    <div class="team-column red-team">
+                        <h3>🔴 Red Team</h3>
+                        <button class="btn btn-role btn-red-spy" data-role="red-spymaster">
+                            <span class="role-icon">🕵️</span>
+                            Spymaster
+                        </button>
+                        <button class="btn btn-role btn-red-op" data-role="red-operative">
+                            <span class="role-icon">🔍</span>
+                            Operative
+                        </button>
+                    </div>
+                    <div class="team-column blue-team">
+                        <h3>🔵 Blue Team</h3>
+                        <button class="btn btn-role btn-blue-spy" data-role="blue-spymaster">
+                            <span class="role-icon">🕵️</span>
+                            Spymaster
+                        </button>
+                        <button class="btn btn-role btn-blue-op" data-role="blue-operative">
+                            <span class="role-icon">🔍</span>
+                            Operative
+                        </button>
+                    </div>
+                </div>
+                <button id="spectator-btn" class="btn btn-ghost">Join as Spectator</button>
+            </div>
+        </div>
+
+        <!-- Main Game Area -->
+        <div id="game-area" class="game-area hidden">
+            <!-- Game Info Bar -->
+            <div class="game-info-bar">
+                <div class="team-score red-score">
+                    <span class="team-label">RED</span>
+                    <span id="red-remaining" class="score">9</span>
+                </div>
+                <div class="game-status">
+                    <div id="turn-indicator" class="turn-indicator red-turn">
+                        RED TEAM'S TURN
+                    </div>
+                    <div class="game-code-small">
+                        Code: <span id="game-code-small"></span>
+                        <button id="copy-code-btn" class="btn-copy" title="Copy game link">📋</button>
+                        <button id="refresh-btn" class="btn-copy" title="Refresh/Sync">🔄</button>
+                        <span id="sync-status" class="sync-status">🟡 Local</span>
+                    </div>
+                </div>
+                <div class="team-score blue-score">
+                    <span class="team-label">BLUE</span>
+                    <span id="blue-remaining" class="score">8</span>
+                </div>
+            </div>
+
+            <!-- Role Indicator -->
+            <div id="role-indicator" class="role-indicator">
+                <span id="current-role"></span>
+                <button id="change-role-btn" class="btn btn-small">Change Role</button>
+            </div>
+
+            <!-- Game Board -->
+            <div id="game-board" class="game-board">
+                <!-- Cards will be generated by JavaScript -->
+            </div>
+
+            <!-- Game Controls -->
+            <div class="game-controls">
+                <button id="end-turn-btn" class="btn btn-warning">End Turn</button>
+                <button id="new-game-from-board" class="btn btn-secondary">New Game</button>
+            </div>
+
+            <!-- Clue Input (Spymaster Only) -->
+            <div id="clue-section" class="clue-section hidden">
+                <h3>Give a Clue</h3>
+                <div class="clue-input-group">
+                    <input type="text" id="clue-word" placeholder="One word clue..." maxlength="30">
+                    <input type="number" id="clue-number" placeholder="#" min="0" max="9" value="1">
+                    <button id="give-clue-btn" class="btn btn-primary">Give Clue</button>
+                </div>
+            </div>
+
+            <!-- Current Clue Display -->
+            <div id="current-clue" class="current-clue hidden">
+                <div class="clue-display">
+                    <span class="clue-label">Current Clue:</span>
+                    <span id="clue-text" class="clue-text"></span>
+                    <span id="clue-count" class="clue-count"></span>
+                </div>
+                <div id="guesses-remaining" class="guesses-remaining"></div>
+            </div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="game-over-modal" class="modal hidden">
+            <div class="modal-content game-over-content">
+                <h2 id="winner-text">Game Over!</h2>
+                <p id="game-over-reason"></p>
+                <div class="game-over-buttons">
+                    <button id="play-again-btn" class="btn btn-primary btn-large">Play Again</button>
+                    <button id="new-words-btn" class="btn btn-secondary">New Game (Different Words)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <!-- Scripts -->
+    <script src="js/words.js"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
