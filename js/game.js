@@ -323,14 +323,24 @@ async function setupSupabaseSubscription() {
 
 // Helper function to join a new game (used when redirected)
 async function joinNewGame(newCode) {
+    // Stop background sync for old game
+    stopBackgroundSync();
+    
     // Clean up current subscription
     if (gameSubscription && supabaseClient) {
-        await supabaseClient.removeChannel(gameSubscription);
+        try {
+            await supabaseClient.removeChannel(gameSubscription);
+        } catch (e) {
+            console.log('Error removing channel:', e);
+        }
     }
     
     // Clear old game data
     localStorage.removeItem(`codenames_${GameState.gameCode}`);
     localStorage.removeItem(`codenames_${GameState.gameCode}_role`);
+    
+    // Reset subscription retries
+    subscriptionRetries = 0;
     
     // Initialize the new game
     await initializeGame(newCode, false);
@@ -608,6 +618,9 @@ async function toggleClueApplies(index) {
     }
 }
 
+// Expose to window for inline onclick handlers
+window.toggleClueApplies = toggleClueApplies;
+
 function updateGameDisplay() {
     renderBoard();
     updateScores();
@@ -672,16 +685,19 @@ async function revealCard(index) {
         GameState.gameOver = true;
         GameState.winner = GameState.currentTurn === 'red' ? 'blue' : 'red';
         await saveGameState();
+        updateGameDisplay();
         showToast(`ASSASSIN! ${GameState.winner.toUpperCase()} team wins!`, 'error');
     } else if (GameState.redRemaining === 0) {
         GameState.gameOver = true;
         GameState.winner = 'red';
         await saveGameState();
+        updateGameDisplay();
         showToast('RED team wins!', 'success');
     } else if (GameState.blueRemaining === 0) {
         GameState.gameOver = true;
         GameState.winner = 'blue';
         await saveGameState();
+        updateGameDisplay();
         showToast('BLUE team wins!', 'success');
     } else if (cardType !== GameState.currentTurn) {
         showToast(`That was a ${cardType.toUpperCase()} card! Turn ends.`, 'warning');
@@ -695,12 +711,11 @@ async function revealCard(index) {
             await endTurn();
             return;
         } else {
-            showToast('Correct! Keep guessing or end your turn.', 'success');
             await saveGameState();
+            updateGameDisplay();
+            showToast('Correct! Keep guessing or end your turn.', 'success');
         }
     }
-    
-    updateGameDisplay();
 }
 
 async function giveClue(word, number) {
@@ -1039,6 +1054,59 @@ function stopBackgroundSync() {
     }
 }
 
+// Sync when user returns to the page or reconnects
+function setupVisibilityAndNetworkHandlers() {
+    // Sync when tab becomes visible again
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && GameState.gameCode && !GameState.gameOver) {
+            console.log('Tab visible, syncing...');
+            await syncLatestState();
+        }
+    });
+    
+    // Sync when coming back online
+    window.addEventListener('online', async () => {
+        console.log('Back online, reconnecting...');
+        if (GameState.gameCode) {
+            subscriptionRetries = 0;
+            await setupSupabaseSubscription();
+            await syncLatestState();
+            showToast('Reconnected!', 'success');
+        }
+    });
+    
+    // Update status when going offline
+    window.addEventListener('offline', () => {
+        console.log('Went offline');
+        updateSyncStatus(false);
+        showToast('Connection lost', 'warning');
+    });
+}
+
+async function syncLatestState() {
+    if (!supabaseEnabled || !supabaseClient || !GameState.gameCode) return;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('games')
+            .select('*')
+            .eq('game_code', GameState.gameCode)
+            .maybeSingle();
+        
+        if (data && !error) {
+            const newLastAction = new Date(data.last_action).getTime();
+            const currentLastAction = GameState.lastAction ? new Date(GameState.lastAction).getTime() : 0;
+            
+            if (newLastAction > currentLastAction) {
+                applySyncedState(data);
+                updateGameDisplay();
+            }
+        }
+    } catch (error) {
+        console.log('Sync error:', error);
+    }
+}
+
 // ==========================================
 // INITIALIZATION
 // ==========================================
@@ -1048,6 +1116,7 @@ async function init() {
     await new Promise(resolve => setTimeout(resolve, 200));
     
     setupEventListeners();
+    setupVisibilityAndNetworkHandlers();
     updateSyncStatus(false);
     
     const urlParams = new URLSearchParams(window.location.search);
