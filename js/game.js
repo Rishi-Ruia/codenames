@@ -25,7 +25,20 @@ const GameState = {
     lastAction: null,
     playerRole: null,
     clueHistory: [], // Array of {team, word, number, stillApplies}
+    players: {}, // Object mapping playerId -> role
 };
+
+// Generate or get unique player ID
+function getPlayerId() {
+    let playerId = localStorage.getItem('codenames_player_id');
+    if (!playerId) {
+        playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('codenames_player_id', playerId);
+    }
+    return playerId;
+}
+
+const PLAYER_ID = getPlayerId();
 
 // Supabase subscription
 let gameSubscription = null;
@@ -108,6 +121,7 @@ function getSyncableState() {
         current_clue_number: GameState.currentClueNumber,
         guesses_remaining: GameState.guessesRemaining,
         clue_history: GameState.clueHistory,
+        players: GameState.players,
         last_action: new Date().toISOString()
     };
 }
@@ -125,6 +139,7 @@ function applySyncedState(data) {
     GameState.currentClueNumber = data.current_clue_number || 0;
     GameState.guessesRemaining = data.guesses_remaining || 0;
     GameState.clueHistory = data.clue_history || [];
+    GameState.players = data.players || {};
     GameState.lastAction = data.last_action || null;
 }
 
@@ -270,6 +285,7 @@ async function setupSupabaseSubscription() {
                     if (newLastAction > currentLastAction) {
                         applySyncedState(payload.new);
                         updateGameDisplay();
+                        updatePlayerCounts();
                         showToast("Game updated!", "success");
                     }
                 }
@@ -856,22 +872,37 @@ function setupEventListeners() {
         btn.addEventListener('click', async () => {
             const role = btn.dataset.role;
             GameState.playerRole = role;
+            GameState.players[PLAYER_ID] = role;
             localStorage.setItem(`codenames_${GameState.gameCode}_role`, role);
             
+            await saveGameState();
             await startGame();
         });
     });
     
     document.getElementById('spectator-btn').addEventListener('click', async () => {
         GameState.playerRole = 'spectator';
+        GameState.players[PLAYER_ID] = 'spectator';
         localStorage.setItem(`codenames_${GameState.gameCode}_role`, 'spectator');
         
+        await saveGameState();
         await startGame();
     });
     
     document.getElementById('change-role-btn').addEventListener('click', () => {
         document.getElementById('game-area').classList.add('hidden');
         document.getElementById('role-modal').classList.remove('hidden');
+    });
+    
+    document.getElementById('clue-history-toggle').addEventListener('click', () => {
+        const sidebar = document.getElementById('clue-history-sidebar');
+        const gameArea = document.getElementById('game-area');
+        sidebar.classList.toggle('open');
+        gameArea.classList.toggle('sidebar-open');
+        
+        // Save preference
+        const isOpen = sidebar.classList.contains('open');
+        localStorage.setItem('clue_sidebar_open', isOpen);
     });
     
     document.getElementById('give-clue-btn').addEventListener('click', async () => {
@@ -975,9 +1006,37 @@ function showRoleSelection() {
     document.getElementById('role-modal').classList.remove('hidden');
     document.getElementById('display-game-code').textContent = GameState.gameCode;
     
+    updatePlayerCounts();
+    
     const url = new URL(window.location);
     url.searchParams.set('game', GameState.gameCode);
     window.history.pushState({}, '', url);
+}
+
+function updatePlayerCounts() {
+    const counts = {
+        'red-spymaster': 0,
+        'red-operative': 0,
+        'blue-spymaster': 0,
+        'blue-operative': 0,
+        'spectator': 0
+    };
+    
+    // Count players in each role
+    Object.values(GameState.players || {}).forEach(role => {
+        if (counts.hasOwnProperty(role)) {
+            counts[role]++;
+        }
+    });
+    
+    // Update badges
+    Object.keys(counts).forEach(role => {
+        const badge = document.getElementById(`count-${role}`);
+        if (badge) {
+            badge.textContent = counts[role];
+            badge.style.display = counts[role] > 0 ? 'inline-block' : 'none';
+        }
+    });
 }
 
 async function startGame() {
@@ -1002,6 +1061,13 @@ async function startGame() {
     document.getElementById('game-area').classList.remove('hidden');
     updateGameDisplay();
     updateSyncStatus(supabaseEnabled);
+    
+    // Restore sidebar state
+    const sidebarOpen = localStorage.getItem('clue_sidebar_open') === 'true';
+    if (sidebarOpen) {
+        document.getElementById('clue-history-sidebar').classList.add('open');
+        document.getElementById('game-area').classList.add('sidebar-open');
+    }
     
     // Start background sync interval to catch any missed updates
     startBackgroundSync();

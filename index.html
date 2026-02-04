@@ -50,26 +50,33 @@
                         <h3>🔴 Red Team</h3>
                         <button class="btn btn-role btn-red-spy" data-role="red-spymaster">
                             <span class="role-icon">🕵️</span>
-                            Spymaster
+                            <span class="role-text">Spymaster</span>
+                            <span class="player-count" id="count-red-spymaster">0</span>
                         </button>
                         <button class="btn btn-role btn-red-op" data-role="red-operative">
                             <span class="role-icon">🔍</span>
-                            Operative
+                            <span class="role-text">Operative</span>
+                            <span class="player-count" id="count-red-operative">0</span>
                         </button>
                     </div>
                     <div class="team-column blue-team">
                         <h3>🔵 Blue Team</h3>
                         <button class="btn btn-role btn-blue-spy" data-role="blue-spymaster">
                             <span class="role-icon">🕵️</span>
-                            Spymaster
+                            <span class="role-text">Spymaster</span>
+                            <span class="player-count" id="count-blue-spymaster">0</span>
                         </button>
                         <button class="btn btn-role btn-blue-op" data-role="blue-operative">
                             <span class="role-icon">🔍</span>
-                            Operative
+                            <span class="role-text">Operative</span>
+                            <span class="player-count" id="count-blue-operative">0</span>
                         </button>
                     </div>
                 </div>
-                <button id="spectator-btn" class="btn btn-ghost">Join as Spectator</button>
+                <button id="spectator-btn" class="btn btn-ghost">
+                    <span class="role-text">Join as Spectator</span>
+                    <span class="player-count" id="count-spectator">0</span>
+                </button>
             </div>
         </div>
 
@@ -84,6 +91,11 @@
                     <p class="no-clues">No clues given yet</p>
                 </div>
             </div>
+            
+            <!-- Toggle Button for Sidebar -->
+            <button id="clue-history-toggle" class="clue-history-toggle" title="Toggle past clues">
+                📜 CLUES
+            </button>
             
             <!-- Game Info Bar -->
             <div class="game-info-bar">

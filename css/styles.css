@@ -324,10 +324,41 @@ input[type="text"]::placeholder {
     padding: 1rem;
     flex-direction: column;
     gap: 0.25rem;
+    position: relative;
 }
 
 .role-icon {
     font-size: 1.5rem;
+}
+
+.role-text {
+    display: block;
+}
+
+.player-count {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1a1a2e;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    min-width: 20px;
+    text-align: center;
+    display: none;
+}
+
+#spectator-btn {
+    position: relative;
+}
+
+#spectator-btn .player-count {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
 }
 
 .btn-red-spy {
@@ -358,7 +389,12 @@ input[type="text"]::placeholder {
     flex-direction: column;
     gap: 1rem;
     position: relative;
-    margin-right: 290px; /* Make room for sidebar */
+    margin-right: 0;
+    transition: margin-right 0.3s ease;
+}
+
+.game-area.sidebar-open {
+    margin-right: 290px;
 }
 
 .game-area.hidden {
@@ -368,7 +404,7 @@ input[type="text"]::placeholder {
 /* Clue History Sidebar */
 .clue-history-sidebar {
     position: fixed;
-    right: 0;
+    right: -280px;
     top: 0;
     bottom: 0;
     width: 280px;
@@ -380,6 +416,42 @@ input[type="text"]::placeholder {
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
+    transition: right 0.3s ease;
+}
+
+.clue-history-sidebar.open {
+    right: 0;
+}
+
+.clue-history-toggle {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-right: none;
+    padding: 1rem 0.5rem;
+    cursor: pointer;
+    z-index: 99;
+    border-radius: 8px 0 0 8px;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.clue-history-toggle:hover {
+    background: linear-gradient(180deg, rgba(26, 26, 46, 1) 0%, rgba(22, 33, 62, 1) 100%);
+    padding-right: 0.75rem;
+}
+
+.clue-history-sidebar.open ~ .clue-history-toggle {
+    right: 280px;
 }
 
 .clue-history-header {
@@ -1023,7 +1095,33 @@ input[type="text"]::placeholder {
     /* Game area - remove sidebar margin on mobile */
     .game-area {
         margin-right: 0;
-        margin-bottom: 210px; /* Make room for bottom sidebar */
+        margin-bottom: 0;
+    }
+    
+    .game-area.sidebar-open {
+        margin-right: 0;
+        margin-bottom: 210px;
+    }
+    
+    /* Clue History Toggle - Bottom left on mobile */
+    .clue-history-toggle {
+        position: fixed;
+        left: 1rem;
+        bottom: 1rem;
+        top: auto;
+        right: auto;
+        transform: none;
+        writing-mode: horizontal-tb;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        font-size: 0.9rem;
+    }
+    
+    .clue-history-sidebar.open ~ .clue-history-toggle {
+        bottom: 210px;
+        right: auto;
+        left: 1rem;
     }
     
     /* Clue History Sidebar - Bottom on Mobile */
@@ -1031,13 +1129,19 @@ input[type="text"]::placeholder {
         position: fixed;
         right: 0;
         left: 0;
-        bottom: 0;
+        bottom: -200px;
         top: auto;
         width: 100%;
         max-height: 200px;
         border-left: none;
         border-top: 2px solid rgba(255, 255, 255, 0.15);
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        transition: bottom 0.3s ease;
+    }
+    
+    .clue-history-sidebar.open {
+        bottom: 0;
+        right: 0;
     }
     
     .clue-history-header {

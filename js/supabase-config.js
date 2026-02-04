@@ -16,6 +16,7 @@
  *   current_clue_number INTEGER DEFAULT 0,
  *   guesses_remaining INTEGER DEFAULT 0,
  *   clue_history JSONB DEFAULT '[]',
+ *   players JSONB DEFAULT '{}',
  *   last_action TIMESTAMPTZ DEFAULT NOW(),
  *   new_game_redirect TEXT DEFAULT NULL
  * );
@@ -23,6 +24,7 @@
  * -- If you already have the table, add the new columns:
  * ALTER TABLE games ADD COLUMN IF NOT EXISTS new_game_redirect TEXT DEFAULT NULL;
  * ALTER TABLE games ADD COLUMN IF NOT EXISTS clue_history JSONB DEFAULT '[]';
+ * ALTER TABLE games ADD COLUMN IF NOT EXISTS players JSONB DEFAULT '{}';
  * 
  * -- Enable Row Level Security
  * ALTER TABLE games ENABLE ROW LEVEL SECURITY;
