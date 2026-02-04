@@ -308,6 +308,39 @@ input[type="text"]::placeholder {
     font-weight: bold;
 }
 
+/* Player Name Input */
+.name-input-section {
+    margin-bottom: 1.5rem;
+}
+
+.name-input-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.name-input-section input {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all var(--transition-fast);
+}
+
+.name-input-section input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.name-input-section input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
 .role-selection {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -364,6 +397,34 @@ input[type="text"]::placeholder {
     top: 50%;
     right: 1rem;
     transform: translateY(-50%);
+}
+
+/* Player Lists */
+.player-list {
+    display: none;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--border-radius);
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.player-tag {
+    padding: 0.4rem 0.6rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    border-left: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.player-tag.current-player {
+    background: rgba(255, 255, 255, 0.2);
+    border-left-color: #ffc107;
+    font-weight: 600;
 }
 
 .btn-red-spy {
@@ -1243,4 +1304,32 @@ body.sidebar-open .container {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
+}
+/* Player Name Display */
+.player-name-display {
+    font-weight: 600;
+    color: #ffc107;
+    font-size: 1.1rem;
+}
+
+.info-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* Player Info and Role Actions */
+.player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.role-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.role-indicator {
+    flex-wrap: wrap;
 }

@@ -45,6 +45,13 @@
             <div class="modal-content">
                 <h2>Choose Your Role</h2>
                 <p class="game-code-display">Game Code: <span id="display-game-code"></span></p>
+                
+                <!-- Player Name Input -->
+                <div class="name-input-section">
+                    <label for="player-name-input">Your Name:</label>
+                    <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20">
+                </div>
+                
                 <div class="role-selection">
                     <div class="team-column red-team">
                         <h3>🔴 Red Team</h3>
@@ -53,11 +60,13 @@
                             <span class="role-text">Spymaster</span>
                             <span class="player-count" id="count-red-spymaster">0</span>
                         </button>
+                        <div class="player-list" id="players-red-spymaster"></div>
                         <button class="btn btn-role btn-red-op" data-role="red-operative">
                             <span class="role-icon">🔍</span>
                             <span class="role-text">Operative</span>
                             <span class="player-count" id="count-red-operative">0</span>
                         </button>
+                        <div class="player-list" id="players-red-operative"></div>
                     </div>
                     <div class="team-column blue-team">
                         <h3>🔵 Blue Team</h3>
@@ -66,17 +75,20 @@
                             <span class="role-text">Spymaster</span>
                             <span class="player-count" id="count-blue-spymaster">0</span>
                         </button>
+                        <div class="player-list" id="players-blue-spymaster"></div>
                         <button class="btn btn-role btn-blue-op" data-role="blue-operative">
                             <span class="role-icon">🔍</span>
                             <span class="role-text">Operative</span>
                             <span class="player-count" id="count-blue-operative">0</span>
                         </button>
+                        <div class="player-list" id="players-blue-operative"></div>
                     </div>
                 </div>
                 <button id="spectator-btn" class="btn btn-ghost">
                     <span class="role-text">Join as Spectator</span>
                     <span class="player-count" id="count-spectator">0</span>
                 </button>
+                <div class="player-list" id="players-spectator"></div>
             </div>
         </div>
 
@@ -122,8 +134,14 @@
 
             <!-- Role Indicator -->
             <div id="role-indicator" class="role-indicator">
-                <span id="current-role"></span>
-                <button id="change-role-btn" class="btn btn-small">Change Role</button>
+                <div class="player-info">
+                    <div id="player-name-display" class="player-name-display">Player</div>
+                    <span id="current-role"></span>
+                </div>
+                <div class="role-actions">
+                    <button id="change-name-btn" class="btn btn-small">✏️ Name</button>
+                    <button id="change-role-btn" class="btn btn-small">Change Role</button>
+                </div>
             </div>
 
             <!-- Game Board -->

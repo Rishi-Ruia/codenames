@@ -25,7 +25,7 @@ const GameState = {
     lastAction: null,
     playerRole: null,
     clueHistory: [], // Array of {team, word, number, stillApplies}
-    players: {}, // Object mapping playerId -> role
+    players: {}, // Object mapping playerId -> {role, name}
 };
 
 // Generate or get unique player ID
@@ -39,6 +39,21 @@ function getPlayerId() {
 }
 
 const PLAYER_ID = getPlayerId();
+
+// Get or set player name
+function getPlayerName() {
+    let name = localStorage.getItem('codenames_player_name');
+    if (!name) {
+        name = 'Player';
+    }
+    return name;
+}
+
+function setPlayerName(name) {
+    const trimmedName = (name || 'Player').trim().substring(0, 20) || 'Player';
+    localStorage.setItem('codenames_player_name', trimmedName);
+    return trimmedName;
+}
 
 // Supabase subscription
 let gameSubscription = null;
@@ -877,6 +892,25 @@ function setupEventListeners() {
             
             await saveGameState();
             await startGame();
+        // Pre-fill current name
+        document.getElementById('player-name-input').value = getPlayerName();
+    });
+    
+    document.getElementById('change-name-btn').addEventListener('click', () => {
+        const newName = prompt('Enter your new name:', getPlayerName());
+        if (newName !== null && newName.trim()) {
+            const playerName = setPlayerName(newName);
+            // Update current player in GameState
+            if (GameState.players[PLAYER_ID]) {
+                const currentRole = typeof GameState.players[PLAYER_ID] === 'string' 
+                    ? GameState.players[PLAYER_ID] 
+                    : GameState.players[PLAYER_ID].role;
+                GameState.players[PLAYER_ID] = { role: currentRole, name: playerName };
+                saveGameState();
+                updatePlayerNameDisplay();
+                updatePlayerCounts();
+            }
+        }
         });
     });
     
@@ -892,6 +926,25 @@ function setupEventListeners() {
     document.getElementById('change-role-btn').addEventListener('click', () => {
         document.getElementById('game-area').classList.add('hidden');
         document.getElementById('role-modal').classList.remove('hidden');
+        // Pre-fill current name
+        document.getElementById('player-name-input').value = getPlayerName();
+    });
+    
+    document.getElementById('change-name-btn').addEventListener('click', () => {
+        const newName = prompt('Enter your new name:', getPlayerName());
+        if (newName !== null && newName.trim()) {
+            const playerName = setPlayerName(newName);
+            // Update current player in GameState
+            if (GameState.players[PLAYER_ID]) {
+                const currentRole = typeof GameState.players[PLAYER_ID] === 'string' 
+                    ? GameState.players[PLAYER_ID] 
+                    : GameState.players[PLAYER_ID].role;
+                GameState.players[PLAYER_ID] = { role: currentRole, name: playerName };
+                saveGameState();
+                updatePlayerNameDisplay();
+                updatePlayerCounts();
+            }
+        }
     });
     
     document.getElementById('clue-history-toggle').addEventListener('click', () => {
@@ -970,6 +1023,8 @@ function setupEventListeners() {
     
     document.getElementById('new-words-btn').addEventListener('click', async () => {
         const oldCode = GameState.gameCode;
+    // Pre-fill name input with saved name
+    document.getElementById('player-name-input').value = getPlayerName();
         const newCode = generateGameCode();
         
         // Clean up current subscription
@@ -1004,6 +1059,13 @@ function showRoleSelection() {
     document.getElementById('setup-modal').classList.add('hidden');
     document.getElementById('role-modal').classList.remove('hidden');
     document.getElementById('display-game-code').textContent = GameState.gameCode;
+function updatePlayerNameDisplay() {
+    const nameDisplay = document.getElementById('player-name-display');
+    if (nameDisplay) {
+        nameDisplay.textContent = getPlayerName();
+    }
+}
+
     
     updatePlayerCounts();
     
@@ -1021,10 +1083,23 @@ function updatePlayerCounts() {
         'spectator': 0
     };
     
-    // Count players in each role
-    Object.values(GameState.players || {}).forEach(role => {
+    const playersByRole = {
+        'red-spymaster': [],
+        'red-operative': [],
+        'blue-spymaster': [],
+        'blue-operative': [],
+        'spectator': []
+    };
+    
+    // Count players in each role and collect names
+    Object.entries(GameState.players || {}).forEach(([playerId, playerData]) => {
+        // Handle both old format (string role) and new format (object with role and name)
+        const role = typeof playerData === 'string' ? playerData : playerData.role;
+        const name = typeof playerData === 'object' ? playerData.name : 'Player';
+        
         if (counts.hasOwnProperty(role)) {
             counts[role]++;
+            playersByRole[role].push({ id: playerId, name: name });
         }
     });
     
@@ -1035,7 +1110,28 @@ function updatePlayerCounts() {
             badge.textContent = counts[role];
             badge.style.display = counts[role] > 0 ? 'inline-block' : 'none';
         }
+        
+        // Update player lists
+        const playerList = document.getElementById(`players-${role}`);
+        if (playerList) {
+            if (playersByRole[role].length > 0) {
+                playerList.innerHTML = playersByRole[role].map(p => 
+                    `<div class="player-tag${p.id === PLAYER_ID ? ' current-player' : ''}">${p.name}</div>`
+                ).join('');
+                playerList.style.display = 'block';
+            } else {
+                playerList.innerHTML = '';
+                playerList.style.display = 'none';
+            }
+        }
     });
+}
+
+function updatePlayerNameDisplay() {
+    const nameDisplay = document.getElementById('player-name-display');
+    if (nameDisplay) {
+        nameDisplay.textContent = getPlayerName();
+    }
 }
 
 async function startGame() {
@@ -1059,6 +1155,7 @@ async function startGame() {
     document.getElementById('role-modal').classList.add('hidden');
     document.getElementById('game-area').classList.remove('hidden');
     updateGameDisplay();
+    updatePlayerNameDisplay();
     updateSyncStatus(supabaseEnabled);
     
     // Restore sidebar state
