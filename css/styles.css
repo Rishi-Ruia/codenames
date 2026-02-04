@@ -588,6 +588,17 @@ input[type="text"]::placeholder {
 
 .card.revealed.team-assassin {
     background: linear-gradient(135deg, var(--assassin-color), #000);
+    border: 3px solid #000;
+    box-shadow: 0 0 0 2px #000, var(--shadow-md);
+}
+
+.card.revealed.team-assassin .card-word {
+    text-shadow: 
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        2px 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .card.revealed.team-assassin::after {

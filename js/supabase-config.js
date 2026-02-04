@@ -15,8 +15,12 @@
  *   current_clue TEXT,
  *   current_clue_number INTEGER DEFAULT 0,
  *   guesses_remaining INTEGER DEFAULT 0,
- *   last_action TIMESTAMPTZ DEFAULT NOW()
+ *   last_action TIMESTAMPTZ DEFAULT NOW(),
+ *   new_game_redirect TEXT DEFAULT NULL
  * );
+ * 
+ * -- If you already have the table, add the new column:
+ * ALTER TABLE games ADD COLUMN IF NOT EXISTS new_game_redirect TEXT DEFAULT NULL;
  * 
  * -- Enable Row Level Security
  * ALTER TABLE games ENABLE ROW LEVEL SECURITY;
@@ -30,16 +34,16 @@
 
 // Supabase configuration
 const SUPABASE_URL = 'https://qjqmexhjadsysvkoqmva.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcW1leGhqYWRzeXN2a29xbXZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg2MjA4NzAsImV4cCI6MjA1NDE5Njg3MH0.T-s-GZwXRk3CXe0VDGeZQA_q2J4bLyu';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcW1leGhqYWRzeXN2a29xbXZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNTAwMzYsImV4cCI6MjA4NTcyNjAzNn0.zpM6hi9-fBcNi_s94AsTCBQ4Kecrp__bO5iP4jTFQZc';
 
-// Initialize Supabase client
-let supabase = null;
-let supabaseEnabled = false;
+// Initialize Supabase client - use different variable name to avoid conflict with window.supabase
+var supabaseClient = null;
+var supabaseEnabled = false;
 
 function initializeSupabase() {
     try {
         if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             supabaseEnabled = true;
             console.log("Supabase initialized successfully!");
             return true;
@@ -53,8 +57,5 @@ function initializeSupabase() {
     }
 }
 
-// Initialize when the script loads
-document.addEventListener('DOMContentLoaded', () => {
-    // Small delay to ensure Supabase SDK is loaded
-    setTimeout(initializeSupabase, 100);
-});
+// Initialize immediately (SDK should be loaded before this script)
+initializeSupabase();

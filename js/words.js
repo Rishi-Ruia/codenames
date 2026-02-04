@@ -89,7 +89,7 @@ const WORD_LIST = [
     "VAULT", "VELVET", "VENUS", "VILLAGE", "VINEYARD", "VIOLIN", "VIRUS",
     "VOLCANO", "VOYAGE", "WALRUS", "WAREHOUSE", "WARRIOR", "WATERFALL", "WEREWOLF",
     "WHISTLE", "WILDFIRE", "WILLOW", "WIZARD", "WOLF", "WONDER", "WREATH",
-    "ZOMBIE", "ZONE"
+        "ZOMBIE", "ZONE", "RISHI"
 ];
 
 // Export for use in game.js

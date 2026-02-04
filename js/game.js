@@ -136,9 +136,9 @@ async function saveGameState() {
     }));
     
     // If Supabase is enabled, sync there
-    if (supabaseEnabled && supabase) {
+    if (supabaseEnabled && supabaseClient) {
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('games')
                 .upsert(syncState, { onConflict: 'game_code' });
             
@@ -154,6 +154,41 @@ async function saveGameState() {
     }
 }
 
+// Notify other players about a new game (redirect them to new code)
+async function broadcastNewGame(oldGameCode, newGameCode) {
+    if (supabaseEnabled && supabaseClient) {
+        try {
+            // First check if old game exists
+            const { data: existingGame } = await supabaseClient
+                .from('games')
+                .select('game_code')
+                .eq('game_code', oldGameCode)
+                .maybeSingle();
+            
+            // Only update if the old game exists in Supabase
+            if (existingGame) {
+                const { error } = await supabaseClient
+                    .from('games')
+                    .update({ 
+                        new_game_redirect: newGameCode,
+                        last_action: new Date().toISOString()
+                    })
+                    .eq('game_code', oldGameCode);
+                
+                if (error) {
+                    console.error("Error broadcasting new game:", error);
+                } else {
+                    console.log(`Broadcasted new game redirect: ${oldGameCode} -> ${newGameCode}`);
+                }
+            } else {
+                console.log("Old game not in Supabase, skipping broadcast");
+            }
+        } catch (error) {
+            console.error("Error broadcasting new game:", error);
+        }
+    }
+}
+
 // Load from localStorage
 function loadLocalState(gameCode) {
     const saved = localStorage.getItem(`codenames_${gameCode}`);
@@ -165,18 +200,18 @@ function loadLocalState(gameCode) {
 
 // Set up Supabase real-time subscription
 async function setupSupabaseSubscription() {
-    if (!supabaseEnabled || !supabase || !GameState.gameCode) {
+    if (!supabaseEnabled || !supabaseClient || !GameState.gameCode) {
         console.log("Supabase not enabled, skipping subscription setup");
         return;
     }
     
     // Clean up any existing subscription
     if (gameSubscription) {
-        await supabase.removeChannel(gameSubscription);
+        await supabaseClient.removeChannel(gameSubscription);
     }
     
     // Subscribe to changes for this game
-    gameSubscription = supabase
+    gameSubscription = supabaseClient
         .channel(`game_${GameState.gameCode}`)
         .on(
             'postgres_changes',
@@ -189,6 +224,19 @@ async function setupSupabaseSubscription() {
             (payload) => {
                 console.log("Received real-time update:", payload);
                 if (payload.new) {
+                    // Check if this is a redirect to a new game
+                    if (payload.new.new_game_redirect) {
+                        const newCode = payload.new.new_game_redirect;
+                        console.log("New game redirect detected:", newCode);
+                        showToast(`New game started! Redirecting to ${newCode}...`, 'info');
+                        
+                        // Small delay to show the toast, then redirect
+                        setTimeout(async () => {
+                            await joinNewGame(newCode);
+                        }, 1000);
+                        return;
+                    }
+                    
                     const newLastAction = new Date(payload.new.last_action).getTime();
                     const currentLastAction = GameState.lastAction ? new Date(GameState.lastAction).getTime() : 0;
                     
@@ -208,6 +256,32 @@ async function setupSupabaseSubscription() {
         });
     
     console.log("Supabase subscription set up for game:", GameState.gameCode);
+}
+
+// Helper function to join a new game (used when redirected)
+async function joinNewGame(newCode) {
+    // Clean up current subscription
+    if (gameSubscription && supabaseClient) {
+        await supabaseClient.removeChannel(gameSubscription);
+    }
+    
+    // Clear old game data
+    localStorage.removeItem(`codenames_${GameState.gameCode}`);
+    localStorage.removeItem(`codenames_${GameState.gameCode}_role`);
+    
+    // Initialize the new game
+    await initializeGame(newCode, false);
+    
+    // Update URL
+    const url = new URL(window.location);
+    url.searchParams.set('game', newCode);
+    window.history.pushState({}, '', url);
+    
+    // Show role selection
+    document.getElementById('game-area').classList.add('hidden');
+    document.getElementById('game-over-modal').classList.add('hidden');
+    document.getElementById('display-game-code').textContent = newCode;
+    document.getElementById('role-modal').classList.remove('hidden');
 }
 
 // ==========================================
@@ -255,17 +329,17 @@ async function initializeGame(gameCode, isNewGame = false) {
     GameState.guessesRemaining = 0;
     
     // Set up real-time subscription
-    if (supabaseEnabled && supabase) {
+    if (supabaseEnabled && supabaseClient) {
         await setupSupabaseSubscription();
         
         // Try to load existing game state from Supabase
         if (!isNewGame) {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('games')
                     .select('*')
                     .eq('game_code', gameCode)
-                    .single();
+                    .maybeSingle();
                 
                 if (data && !error) {
                     console.log("Loaded existing game from Supabase:", data);
@@ -562,14 +636,14 @@ function showGameOverModal() {
 // ==========================================
 
 async function manualSync() {
-    if (supabaseEnabled && supabase) {
+    if (supabaseEnabled && supabaseClient) {
         try {
             showToast('Syncing...', 'info');
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('games')
                 .select('*')
                 .eq('game_code', GameState.gameCode)
-                .single();
+                .maybeSingle();
             
             if (data && !error) {
                 applySyncedState(data);
@@ -619,17 +693,53 @@ function setupEventListeners() {
     });
     
     document.querySelectorAll('.btn-role').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const role = btn.dataset.role;
             GameState.playerRole = role;
             localStorage.setItem(`codenames_${GameState.gameCode}_role`, role);
+            
+            // Sync game state before starting
+            if (supabaseEnabled && supabaseClient) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('games')
+                        .select('*')
+                        .eq('game_code', GameState.gameCode)
+                        .maybeSingle();
+                    
+                    if (data && !error) {
+                        applySyncedState(data);
+                    }
+                } catch (error) {
+                    console.log("Error syncing on role change:", error);
+                }
+            }
+            
             startGame();
         });
     });
     
-    document.getElementById('spectator-btn').addEventListener('click', () => {
+    document.getElementById('spectator-btn').addEventListener('click', async () => {
         GameState.playerRole = 'spectator';
         localStorage.setItem(`codenames_${GameState.gameCode}_role`, 'spectator');
+        
+        // Sync game state before starting
+        if (supabaseEnabled && supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('games')
+                    .select('*')
+                    .eq('game_code', GameState.gameCode)
+                    .maybeSingle();
+                
+                if (data && !error) {
+                    applySyncedState(data);
+                }
+            } catch (error) {
+                console.log("Error syncing on role change:", error);
+            }
+        }
+        
         startGame();
     });
     
@@ -659,12 +769,17 @@ function setupEventListeners() {
     });
     
     document.getElementById('new-game-from-board').addEventListener('click', async () => {
-        if (confirm('Start a new game? This will generate new words and a new key.')) {
-            if (gameSubscription) {
-                await supabase.removeChannel(gameSubscription);
+        if (confirm('Start a new game? This will generate new words and a new key. All players will be redirected to the new game.')) {
+            const oldCode = GameState.gameCode;
+            const newCode = generateGameCode();
+            
+            // Broadcast the new game to other players BEFORE cleaning up
+            await broadcastNewGame(oldCode, newCode);
+            
+            if (gameSubscription && supabaseClient) {
+                await supabaseClient.removeChannel(gameSubscription);
             }
             
-            const newCode = generateGameCode();
             localStorage.removeItem(`codenames_${GameState.gameCode}`);
             localStorage.removeItem(`codenames_${GameState.gameCode}_role`);
             
@@ -694,28 +809,17 @@ function setupEventListeners() {
         await manualSync();
     });
     
-    document.getElementById('play-again-btn').addEventListener('click', async () => {
-        GameState.revealed = Array(25).fill(false);
-        GameState.currentTurn = GameState.startingTeam;
-        GameState.redRemaining = GameState.startingTeam === 'red' ? 9 : 8;
-        GameState.blueRemaining = GameState.startingTeam === 'blue' ? 9 : 8;
-        GameState.gameOver = false;
-        GameState.winner = null;
-        GameState.currentClue = null;
-        GameState.currentClueNumber = 0;
-        GameState.guessesRemaining = 0;
-        
-        await saveGameState();
-        document.getElementById('game-over-modal').classList.add('hidden');
-        updateGameDisplay();
-    });
-    
     document.getElementById('new-words-btn').addEventListener('click', async () => {
-        if (gameSubscription) {
-            await supabase.removeChannel(gameSubscription);
+        const oldCode = GameState.gameCode;
+        const newCode = generateGameCode();
+        
+        // Broadcast the new game to other players BEFORE cleaning up
+        await broadcastNewGame(oldCode, newCode);
+        
+        if (gameSubscription && supabaseClient) {
+            await supabaseClient.removeChannel(gameSubscription);
         }
         
-        const newCode = generateGameCode();
         localStorage.removeItem(`codenames_${GameState.gameCode}`);
         localStorage.removeItem(`codenames_${GameState.gameCode}_role`);
         
