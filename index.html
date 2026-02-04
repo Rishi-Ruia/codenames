@@ -92,6 +92,46 @@
             </div>
         </div>
 
+        <!-- Teams Sidebar (outside game area) -->
+        <div id="teams-sidebar" class="teams-sidebar">
+            <div class="teams-header">
+                <h3>👥 Teams</h3>
+            </div>
+            <div id="teams-content" class="teams-content">
+                <div class="team-section red-team-section">
+                    <h4>🔴 Red Team</h4>
+                    <div class="role-group">
+                        <div class="role-label">🕵️ Spymaster</div>
+                        <div id="team-red-spymaster" class="team-player-list"></div>
+                    </div>
+                    <div class="role-group">
+                        <div class="role-label">🔍 Operatives</div>
+                        <div id="team-red-operative" class="team-player-list"></div>
+                    </div>
+                </div>
+                <div class="team-section blue-team-section">
+                    <h4>🔵 Blue Team</h4>
+                    <div class="role-group">
+                        <div class="role-label">🕵️ Spymaster</div>
+                        <div id="team-blue-spymaster" class="team-player-list"></div>
+                    </div>
+                    <div class="role-group">
+                        <div class="role-label">🔍 Operatives</div>
+                        <div id="team-blue-operative" class="team-player-list"></div>
+                    </div>
+                </div>
+                <div class="team-section spectator-section">
+                    <h4>👁️ Spectators</h4>
+                    <div id="team-spectator" class="team-player-list"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Toggle Button for Teams Sidebar -->
+        <button id="teams-toggle" class="teams-toggle" title="Toggle teams">
+            👥
+        </button>
+
         <!-- Clue History Sidebar (outside game area) -->
         <div id="clue-history-sidebar" class="clue-history-sidebar">
             <div class="clue-history-header">

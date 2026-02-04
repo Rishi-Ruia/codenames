@@ -1333,3 +1333,215 @@ body.sidebar-open .container {
 .role-indicator {
     flex-wrap: wrap;
 }
+
+/* Teams Sidebar */
+.teams-sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+    border-right: 2px solid rgba(255, 255, 255, 0.15);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    transition: left 0.3s ease;
+}
+
+.teams-sidebar.open {
+    left: 0;
+}
+
+.teams-toggle {
+    position: fixed;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-left: none;
+    padding: 0.75rem 0.5rem;
+    cursor: pointer;
+    z-index: 101;
+    border-radius: 0 8px 8px 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    line-height: 1;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.teams-toggle:hover {
+    background: linear-gradient(180deg, rgba(26, 26, 46, 1) 0%, rgba(22, 33, 62, 1) 100%);
+    transform: translateY(-50%) translateX(3px);
+}
+
+.teams-sidebar.open ~ .teams-toggle {
+    left: 280px;
+}
+
+.teams-header {
+    padding: 1.5rem 1rem 1rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.teams-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+.teams-content {
+    padding: 1rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.team-section {
+    margin-bottom: 1.5rem;
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.team-section h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.red-team-section h4 {
+    color: var(--red-primary);
+}
+
+.blue-team-section h4 {
+    color: var(--blue-primary);
+}
+
+.spectator-section h4 {
+    color: var(--text-secondary);
+}
+
+.role-group {
+    margin-bottom: 0.75rem;
+}
+
+.role-group:last-child {
+    margin-bottom: 0;
+}
+
+.role-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.25rem;
+}
+
+.team-player-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.team-player-name {
+    padding: 0.4rem 0.6rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    border-left: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.team-player-name.current-player {
+    background: rgba(255, 255, 255, 0.15);
+    border-left-color: #ffc107;
+    font-weight: 600;
+}
+
+.no-players {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+}
+
+/* Body margin when teams sidebar is open */
+body.teams-sidebar-open .container {
+    margin-left: 290px;
+    transition: margin-left 0.3s ease;
+}
+
+/* Both sidebars open */
+body.teams-sidebar-open.sidebar-open .container {
+    margin-left: 290px;
+    margin-right: 290px;
+}
+
+/* Mobile Styles for Teams Sidebar */
+@media (max-width: 768px) {
+    /* Teams sidebar slides from bottom on mobile */
+    .teams-sidebar {
+        left: 0;
+        right: 0;
+        top: auto;
+        bottom: -300px;
+        width: 100%;
+        height: 300px;
+        transition: bottom 0.3s ease;
+    }
+    
+    .teams-sidebar.open {
+        bottom: 0;
+        left: 0;
+    }
+    
+    /* Teams toggle - Bottom left on mobile */
+    .teams-toggle {
+        position: fixed;
+        left: 1rem;
+        bottom: 1rem;
+        top: auto;
+        right: auto;
+        transform: none;
+        padding: 0.75rem 1rem;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        font-size: 1.2rem;
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    
+    .teams-toggle:hover {
+        transform: scale(1.05);
+    }
+    
+    .teams-sidebar.open ~ .teams-toggle {
+        bottom: 310px;
+        left: 1rem;
+    }
+    
+    /* Container and body margin adjustments for mobile */
+    body.teams-sidebar-open .container {
+        margin-left: 0;
+        margin-bottom: 310px;
+    }
+    
+    body.teams-sidebar-open.sidebar-open .container {
+        margin-left: 0;
+        margin-right: 0;
+        margin-bottom: 520px;
+    }
+}

@@ -957,6 +957,16 @@ function setupEventListeners() {
         localStorage.setItem('clue_sidebar_open', isOpen);
     });
     
+    document.getElementById('teams-toggle').addEventListener('click', () => {
+        const sidebar = document.getElementById('teams-sidebar');
+        sidebar.classList.toggle('open');
+        document.body.classList.toggle('teams-sidebar-open');
+        
+        // Save preference
+        const isOpen = sidebar.classList.contains('open');
+        localStorage.setItem('teams_sidebar_open', isOpen);
+    });
+    
     document.getElementById('give-clue-btn').addEventListener('click', async () => {
         const wordInput = document.getElementById('clue-word');
         const numberInput = document.getElementById('clue-number');
@@ -1074,6 +1084,22 @@ function updatePlayerNameDisplay() {
     window.history.pushState({}, '', url);
 }
 
+function updateTeamsSidebar(playersByRole) {
+    // Update teams sidebar with player names
+    Object.keys(playersByRole).forEach(role => {
+        const teamList = document.getElementById(`team-${role}`);
+        if (teamList) {
+            if (playersByRole[role].length > 0) {
+                teamList.innerHTML = playersByRole[role].map(p => 
+                    `<div class="team-player-name${p.id === PLAYER_ID ? ' current-player' : ''}">${p.name}</div>`
+                ).join('');
+            } else {
+                teamList.innerHTML = '<div class="no-players">None</div>';
+            }
+        }
+    });
+}
+
 function updatePlayerCounts() {
     const counts = {
         'red-spymaster': 0,
@@ -1102,6 +1128,9 @@ function updatePlayerCounts() {
             playersByRole[role].push({ id: playerId, name: name });
         }
     });
+    
+    // Update teams sidebar
+    updateTeamsSidebar(playersByRole);
     
     // Update badges
     Object.keys(counts).forEach(role => {
@@ -1163,6 +1192,12 @@ async function startGame() {
     if (sidebarOpen) {
         document.getElementById('clue-history-sidebar').classList.add('open');
         document.body.classList.add('sidebar-open');
+    }
+    
+    const teamsSidebarOpen = localStorage.getItem('teams_sidebar_open') === 'true';
+    if (teamsSidebarOpen) {
+        document.getElementById('teams-sidebar').classList.add('open');
+        document.body.classList.add('teams-sidebar-open');
     }
     
     // Start background sync interval to catch any missed updates
