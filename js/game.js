@@ -886,14 +886,16 @@ function setupEventListeners() {
     document.querySelectorAll('.btn-role').forEach(btn => {
         btn.addEventListener('click', async () => {
             const role = btn.dataset.role;
+            const nameInput = document.getElementById('player-name-input');
+            const playerName = setPlayerName(nameInput.value);
+            
             GameState.playerRole = role;
-            GameState.players[PLAYER_ID] = role;
+            GameState.players[PLAYER_ID] = { role: role, name: playerName };
             localStorage.setItem(`codenames_${GameState.gameCode}_role`, role);
             
             await saveGameState();
             await startGame();
-        // Pre-fill current name
-        document.getElementById('player-name-input').value = getPlayerName();
+        });
     });
     
     document.getElementById('spectator-btn').addEventListener('click', async () => {
@@ -1018,8 +1020,6 @@ function setupEventListeners() {
     
     document.getElementById('new-words-btn').addEventListener('click', async () => {
         const oldCode = GameState.gameCode;
-    // Pre-fill name input with saved name
-    document.getElementById('player-name-input').value = getPlayerName();
         const newCode = generateGameCode();
         
         // Clean up current subscription
@@ -1054,19 +1054,21 @@ function showRoleSelection() {
     document.getElementById('setup-modal').classList.add('hidden');
     document.getElementById('role-modal').classList.remove('hidden');
     document.getElementById('display-game-code').textContent = GameState.gameCode;
-function updatePlayerNameDisplay() {
-    const nameDisplay = document.getElementById('player-name-display');
-    if (nameDisplay) {
-        nameDisplay.textContent = getPlayerName();
-    }
-}
-
+    // Pre-fill name input with saved name
+    document.getElementById('player-name-input').value = getPlayerName();
     
     updatePlayerCounts();
     
     const url = new URL(window.location);
     url.searchParams.set('game', GameState.gameCode);
     window.history.pushState({}, '', url);
+}
+
+function updatePlayerNameDisplay() {
+    const nameDisplay = document.getElementById('player-name-display');
+    if (nameDisplay) {
+        nameDisplay.textContent = getPlayerName();
+    }
 }
 
 function updateTeamsSidebar(playersByRole) {
@@ -1139,13 +1141,6 @@ function updatePlayerCounts() {
             }
         }
     });
-}
-
-function updatePlayerNameDisplay() {
-    const nameDisplay = document.getElementById('player-name-display');
-    if (nameDisplay) {
-        nameDisplay.textContent = getPlayerName();
-    }
 }
 
 async function startGame() {
