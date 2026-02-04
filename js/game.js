@@ -896,27 +896,12 @@ function setupEventListeners() {
         document.getElementById('player-name-input').value = getPlayerName();
     });
     
-    document.getElementById('change-name-btn').addEventListener('click', () => {
-        const newName = prompt('Enter your new name:', getPlayerName());
-        if (newName !== null && newName.trim()) {
-            const playerName = setPlayerName(newName);
-            // Update current player in GameState
-            if (GameState.players[PLAYER_ID]) {
-                const currentRole = typeof GameState.players[PLAYER_ID] === 'string' 
-                    ? GameState.players[PLAYER_ID] 
-                    : GameState.players[PLAYER_ID].role;
-                GameState.players[PLAYER_ID] = { role: currentRole, name: playerName };
-                saveGameState();
-                updatePlayerNameDisplay();
-                updatePlayerCounts();
-            }
-        }
-        });
-    });
-    
     document.getElementById('spectator-btn').addEventListener('click', async () => {
+        const nameInput = document.getElementById('player-name-input');
+        const playerName = setPlayerName(nameInput.value);
+        
         GameState.playerRole = 'spectator';
-        GameState.players[PLAYER_ID] = 'spectator';
+        GameState.players[PLAYER_ID] = { role: 'spectator', name: playerName };
         localStorage.setItem(`codenames_${GameState.gameCode}_role`, 'spectator');
         
         await saveGameState();
@@ -930,7 +915,7 @@ function setupEventListeners() {
         document.getElementById('player-name-input').value = getPlayerName();
     });
     
-    document.getElementById('change-name-btn').addEventListener('click', () => {
+    document.getElementById('change-name-btn').addEventListener('click', async () => {
         const newName = prompt('Enter your new name:', getPlayerName());
         if (newName !== null && newName.trim()) {
             const playerName = setPlayerName(newName);
@@ -940,7 +925,7 @@ function setupEventListeners() {
                     ? GameState.players[PLAYER_ID] 
                     : GameState.players[PLAYER_ID].role;
                 GameState.players[PLAYER_ID] = { role: currentRole, name: playerName };
-                saveGameState();
+                await saveGameState();
                 updatePlayerNameDisplay();
                 updatePlayerCounts();
             }
