@@ -358,6 +358,7 @@ input[type="text"]::placeholder {
     flex-direction: column;
     gap: 1rem;
     position: relative;
+    margin-right: 290px; /* Make room for sidebar */
 }
 
 .game-area.hidden {
@@ -1017,6 +1018,12 @@ input[type="text"]::placeholder {
     
     .clue-input-group input[type="number"] {
         width: 100%;
+    }
+    
+    /* Game area - remove sidebar margin on mobile */
+    .game-area {
+        margin-right: 0;
+        margin-bottom: 210px; /* Make room for bottom sidebar */
     }
     
     /* Clue History Sidebar - Bottom on Mobile */
