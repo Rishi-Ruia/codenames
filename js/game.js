@@ -589,6 +589,8 @@ function updateClueHistory() {
     const isSpymaster = GameState.playerRole?.includes('spymaster');
     const canToggle = isOperative || isSpymaster;
     
+    console.log('Updating clue history. Role:', GameState.playerRole, 'canToggle:', canToggle);
+    
     if (GameState.clueHistory.length === 0) {
         historyContainer.innerHTML = '<p class="no-clues">No clues given yet</p>';
     } else {
