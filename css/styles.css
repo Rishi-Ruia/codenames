@@ -801,13 +801,13 @@ body.sidebar-open .container {
     grid-template-columns: repeat(5, 1fr);
     gap: 0.75rem;
     padding: 1rem;
-    background: linear-gradient(135deg, #f4ecd8 0%, #e8dcc4 50%, #f0e6d2 100%);
+    background: linear-gradient(135deg, #f5e6d3 0%, #e0d4c0 50%, #f0e4d0 100%);
     border-radius: var(--border-radius-lg);
     max-width: 800px;
     margin: 0 auto;
     width: 100%;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
-    border: 1px solid #d4c4a8;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.4);
+    border: 2px solid #c9b89a;
 }
 
 /* Card Styles */
