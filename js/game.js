@@ -896,9 +896,8 @@ function setupEventListeners() {
     
     document.getElementById('clue-history-toggle').addEventListener('click', () => {
         const sidebar = document.getElementById('clue-history-sidebar');
-        const gameArea = document.getElementById('game-area');
         sidebar.classList.toggle('open');
-        gameArea.classList.toggle('sidebar-open');
+        document.body.classList.toggle('sidebar-open');
         
         // Save preference
         const isOpen = sidebar.classList.contains('open');
@@ -1066,7 +1065,7 @@ async function startGame() {
     const sidebarOpen = localStorage.getItem('clue_sidebar_open') === 'true';
     if (sidebarOpen) {
         document.getElementById('clue-history-sidebar').classList.add('open');
-        document.getElementById('game-area').classList.add('sidebar-open');
+        document.body.classList.add('sidebar-open');
     }
     
     // Start background sync interval to catch any missed updates

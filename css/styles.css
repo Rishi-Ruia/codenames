@@ -394,12 +394,12 @@ input[type="text"]::placeholder {
     flex-direction: column;
     gap: 1rem;
     position: relative;
-    margin-right: 0;
-    transition: margin-right 0.3s ease;
 }
 
-.game-area.sidebar-open {
+/* Body margin when sidebar is open */
+body.sidebar-open .container {
     margin-right: 290px;
+    transition: margin-right 0.3s ease;
 }
 
 .game-area.hidden {
@@ -436,23 +436,21 @@ input[type="text"]::placeholder {
     background: linear-gradient(180deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
     border: 2px solid rgba(255, 255, 255, 0.15);
     border-right: none;
-    padding: 1rem 0.5rem;
+    padding: 0.75rem 0.5rem;
     cursor: pointer;
-    z-index: 99;
+    z-index: 101;
     border-radius: 8px 0 0 8px;
     color: var(--text-primary);
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    font-weight: 600;
-    letter-spacing: 0.05em;
+    line-height: 1;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .clue-history-toggle:hover {
     background: linear-gradient(180deg, rgba(26, 26, 46, 1) 0%, rgba(22, 33, 62, 1) 100%);
-    padding-right: 0.75rem;
+    transform: translateY(-50%) translateX(-3px);
 }
 
 .clue-history-sidebar.open ~ .clue-history-toggle {
@@ -1097,36 +1095,39 @@ input[type="text"]::placeholder {
         width: 100%;
     }
     
-    /* Game area - remove sidebar margin on mobile */
-    .game-area {
-        margin-right: 0;
-        margin-bottom: 0;
-    }
-    
-    .game-area.sidebar-open {
+    /* Container and body margin adjustments for mobile */
+    body.sidebar-open .container {
         margin-right: 0;
         margin-bottom: 210px;
     }
     
-    /* Clue History Toggle - Bottom left on mobile */
+    /* Clue History Toggle - Bottom right on mobile */
     .clue-history-toggle {
         position: fixed;
-        left: 1rem;
+        right: 1rem;
         bottom: 1rem;
         top: auto;
-        right: auto;
+        left: auto;
         transform: none;
-        writing-mode: horizontal-tb;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        border-radius: 50%;
         border: 2px solid rgba(255, 255, 255, 0.15);
-        font-size: 0.9rem;
+        font-size: 1.2rem;
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    
+    .clue-history-toggle:hover {
+        transform: scale(1.05);
     }
     
     .clue-history-sidebar.open ~ .clue-history-toggle {
         bottom: 210px;
-        right: auto;
-        left: 1rem;
+        right: 1rem;
     }
     
     /* Clue History Sidebar - Bottom on Mobile */
