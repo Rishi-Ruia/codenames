@@ -586,6 +586,8 @@ function updateClueHistory() {
     if (!historyContainer || !sidebar) return;
     
     const isOperative = GameState.playerRole?.includes('operative');
+    const isSpymaster = GameState.playerRole?.includes('spymaster');
+    const canToggle = isOperative || isSpymaster;
     
     if (GameState.clueHistory.length === 0) {
         historyContainer.innerHTML = '<p class="no-clues">No clues given yet</p>';
@@ -597,7 +599,7 @@ function updateClueHistory() {
                     <span class="clue-history-word">${clue.word}</span>
                     <span class="clue-history-number">${clue.number}</span>
                 </div>
-                ${isOperative ? `
+                ${canToggle ? `
                     <label class="clue-toggle">
                         <input type="checkbox" 
                             ${clue.stillApplies ? 'checked' : ''} 
