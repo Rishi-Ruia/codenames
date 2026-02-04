@@ -367,44 +367,52 @@ input[type="text"]::placeholder {
 /* Clue History Sidebar */
 .clue-history-sidebar {
     position: fixed;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 220px;
-    max-height: 60vh;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: var(--border-radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+    border-left: 2px solid rgba(255, 255, 255, 0.15);
     overflow: hidden;
     z-index: 100;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
 }
 
-.clue-history-header {
-    background: rgba(0, 0, 0, 0.3);
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.clue-history-header {4);
+    padding: 1.25rem 1.25rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
 }
 
 .clue-history-header h3 {
-    font-size: 0.9rem;
+    font-size: 1rem;
     margin: 0;
     color: var(--text-primary);
-}
-
+    text-transform: uppercase;
+    letter-spacing: 0.05em
+    color: va1rem;
+    overflow-y: auto;
+    flex: 1
 .clue-history-list {
     padding: 0.5rem;
     max-height: calc(60vh - 50px);
-    overflow-y: auto;
-}
-
-.clue-history-list::-webkit-scrollbar {
-    width: 6px;
+    overflo8px;
 }
 
 .clue-history-list::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.3);
 }
+
+.clue-history-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.clue-history-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4)
 
 .clue-history-list::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
@@ -414,18 +422,21 @@ input[type="text"]::placeholder {
 .no-clues {
     text-align: center;
     color: var(--text-secondary);
-    font-size: 0.85rem;
-    padding: 1rem;
-}
-
-.clue-history-item {
+    font-size: 75rem 1rem;
+    margin-bottom: 0.75rem;
+    border-radius: var(--border-radius);
+    background: rgba(0, 0, 0, 0.3);
+    transition: all var(--transition-fast);
+    border: 1px solid rgba(255, 255, 255, 0.05
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.5rem;
-    border-radius: var(--border-radius);
-    background: rgba(0, 0, 0, 0.2);
+    justify-conte4px solid var(--red-primary);
+    box-shadow: inset 0 0 10px rgba(220, 53, 69, 0.1);
+}
+
+.clue-history-item.blue-clue {
+    border-left: 4px solid var(--blue-primary);
+    box-shadow: inset 0 0 10px rgba(13, 110, 253, 0.1
     transition: all var(--transition-fast);
 }
 
@@ -444,12 +455,14 @@ input[type="text"]::placeholder {
 
 .clue-history-content {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 1;
-    min-width: 0;
-}
-
+    align-items: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.03em
 .clue-history-team {
     font-size: 0.75rem;
 }
@@ -839,17 +852,27 @@ input[type="text"]::placeholder {
 
 .current-clue.hidden {
     display: none;
-}
-
-.clue-display {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
+};
+        left: 0;
+        bottom: 0;
+        top: auto;
+        width: 100%;
+        max-height: 200px;
+        border-left: none;
+        border-top: 2px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    }
     
-    /* Clue History Sidebar - Bottom on Mobile */
+    .clue-history-header {
+        padding: 0.75rem 1rem;
+    }
+    
+    .clue-history-header h3 {
+        font-size: 0.85rem;
+    }
+    
+    .clue-history-list {
+        padding: 0.75remar - Bottom on Mobile */
     .clue-history-sidebar {
         position: fixed;
         right: 0.5rem;

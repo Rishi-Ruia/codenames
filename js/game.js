@@ -128,9 +128,10 @@ function applySyncedState(data) {
     GameState.lastAction = data.last_action || null;
 }
 
-// Save to Supabase
-async function saveGameState() {
+// Save to Supabase with retry logic
+async function saveGameState(retryCount = 0) {
     const syncState = getSyncableState();
+    const maxRetries = 3;
     
     // Always save to localStorage as backup
     localStorage.setItem(`codenames_${GameState.gameCode}`, JSON.stringify({
@@ -147,12 +148,23 @@ async function saveGameState() {
             
             if (error) {
                 console.error("Supabase sync error:", error);
-                showToast("Sync error - trying again...", "warning");
+                if (retryCount < maxRetries) {
+                    console.log(`Retrying save (${retryCount + 1}/${maxRetries})...`);
+                    await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+                    return saveGameState(retryCount + 1);
+                } else {
+                    showToast("Sync error - changes saved locally", "warning");
+                }
             } else {
                 console.log("State synced to Supabase");
             }
         } catch (error) {
             console.error("Supabase sync error:", error);
+            if (retryCount < maxRetries) {
+                console.log(`Retrying save (${retryCount + 1}/${maxRetries})...`);
+                await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+                return saveGameState(retryCount + 1);
+            }
         }
     }
 }
@@ -202,6 +214,9 @@ function loadLocalState(gameCode) {
 }
 
 // Set up Supabase real-time subscription
+let subscriptionRetries = 0;
+const maxSubscriptionRetries = 5;
+
 async function setupSupabaseSubscription() {
     if (!supabaseEnabled || !supabaseClient || !GameState.gameCode) {
         console.log("Supabase not enabled, skipping subscription setup");
@@ -210,12 +225,21 @@ async function setupSupabaseSubscription() {
     
     // Clean up any existing subscription
     if (gameSubscription) {
-        await supabaseClient.removeChannel(gameSubscription);
+        try {
+            await supabaseClient.removeChannel(gameSubscription);
+        } catch (e) {
+            console.log("Error removing old channel:", e);
+        }
     }
     
     // Subscribe to changes for this game
     gameSubscription = supabaseClient
-        .channel(`game_${GameState.gameCode}`)
+        .channel(`game_${GameState.gameCode}`, {
+            config: {
+                broadcast: { self: true },
+                presence: { key: '' }
+            }
+        })
         .on(
             'postgres_changes',
             {
@@ -251,10 +275,46 @@ async function setupSupabaseSubscription() {
                 }
             }
         )
-        .subscribe((status) => {
-            console.log("Subscription status:", status);
+        .subscribe(async (status, err) => {
+            console.log("Subscription status:", status, err);
             if (status === 'SUBSCRIBED') {
+                subscriptionRetries = 0;
                 updateSyncStatus(true);
+                
+                // Fetch latest state on successful subscription
+                try {
+                    const { data } = await supabaseClient
+                        .from('games')
+                        .select('*')
+                        .eq('game_code', GameState.gameCode)
+                        .maybeSingle();
+                    
+                    if (data) {
+                        const newLastAction = new Date(data.last_action).getTime();
+                        const currentLastAction = GameState.lastAction ? new Date(GameState.lastAction).getTime() : 0;
+                        
+                        if (newLastAction > currentLastAction) {
+                            applySyncedState(data);
+                            updateGameDisplay();
+                        }
+                    }
+                } catch (e) {
+                    console.log("Error fetching initial state:", e);
+                }
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.error("Subscription error:", err);
+                updateSyncStatus(false);
+                
+                // Retry subscription
+                if (subscriptionRetries < maxSubscriptionRetries) {
+                    subscriptionRetries++;
+                    console.log(`Retrying subscription (${subscriptionRetries}/${maxSubscriptionRetries})...`);
+                    setTimeout(() => setupSupabaseSubscription(), 2000 * subscriptionRetries);
+                } else {
+                    showToast("Connection lost. Click refresh to reconnect.", "error");
+                }
+            } else if (status === 'CLOSED') {
+                updateSyncStatus(false);
             }
         });
     
@@ -712,6 +772,11 @@ async function manualSync() {
     if (supabaseEnabled && supabaseClient) {
         try {
             showToast('Syncing...', 'info');
+            
+            // Reset subscription retries and reconnect
+            subscriptionRetries = 0;
+            await setupSupabaseSubscription();
+            
             const { data, error } = await supabaseClient
                 .from('games')
                 .select('*')
@@ -722,12 +787,15 @@ async function manualSync() {
                 applySyncedState(data);
                 updateGameDisplay();
                 showToast('Game synced!', 'success');
+            } else if (error) {
+                console.error('Sync error:', error);
+                showToast('Sync failed - check connection', 'error');
             } else {
                 showToast('No game data found', 'warning');
             }
         } catch (error) {
             console.error("Sync error:", error);
-            showToast('Sync failed', 'error');
+            showToast('Sync failed - check connection', 'error');
         }
     } else {
         showToast('Not connected to server', 'warning');
@@ -916,10 +984,58 @@ async function startGame() {
     updateGameDisplay();
     updateSyncStatus(supabaseEnabled);
     
+    // Start background sync interval to catch any missed updates
+    startBackgroundSync();
+    
     if (!supabaseEnabled) {
         showToast('⚠️ Offline mode - sync not available', 'warning');
     } else {
         showToast('🟢 Connected! Game syncs in real-time.', 'success');
+    }
+}
+
+// Background sync to catch any missed real-time updates
+let backgroundSyncInterval = null;
+
+function startBackgroundSync() {
+    // Clear any existing interval
+    if (backgroundSyncInterval) {
+        clearInterval(backgroundSyncInterval);
+    }
+    
+    // Sync every 5 seconds as a fallback
+    backgroundSyncInterval = setInterval(async () => {
+        if (!supabaseEnabled || !supabaseClient || !GameState.gameCode || GameState.gameOver) {
+            return;
+        }
+        
+        try {
+            const { data, error } = await supabaseClient
+                .from('games')
+                .select('*')
+                .eq('game_code', GameState.gameCode)
+                .maybeSingle();
+            
+            if (data && !error) {
+                const newLastAction = new Date(data.last_action).getTime();
+                const currentLastAction = GameState.lastAction ? new Date(GameState.lastAction).getTime() : 0;
+                
+                if (newLastAction > currentLastAction) {
+                    console.log('Background sync found new data');
+                    applySyncedState(data);
+                    updateGameDisplay();
+                }
+            }
+        } catch (error) {
+            console.log('Background sync error:', error);
+        }
+    }, 5000);
+}
+
+function stopBackgroundSync() {
+    if (backgroundSyncInterval) {
+        clearInterval(backgroundSyncInterval);
+        backgroundSyncInterval = null;
     }
 }
 
