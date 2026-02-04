@@ -620,19 +620,27 @@ function updateClueHistory() {
     const isSpymaster = GameState.playerRole?.includes('spymaster');
     const canToggle = isOperative || isSpymaster;
     
-    console.log('Updating clue history. Role:', GameState.playerRole, 'canToggle:', canToggle);
+    // Determine player's team from their role
+    const playerTeam = GameState.playerRole?.startsWith('red') ? 'red' : 
+                      GameState.playerRole?.startsWith('blue') ? 'blue' : null;
+    
+    console.log('Updating clue history. Role:', GameState.playerRole, 'canToggle:', canToggle, 'playerTeam:', playerTeam);
     
     if (GameState.clueHistory.length === 0) {
         historyContainer.innerHTML = '<p class="no-clues">No clues given yet</p>';
     } else {
-        historyContainer.innerHTML = GameState.clueHistory.map((clue, index) => `
+        historyContainer.innerHTML = GameState.clueHistory.map((clue, index) => {
+            // Only allow toggling if it's your team's clue
+            const canToggleThisClue = canToggle && clue.team === playerTeam;
+            
+            return `
             <div class="clue-history-item ${clue.team}-clue ${!clue.stillApplies ? 'crossed-out' : ''}">
                 <div class="clue-history-content">
                     <span class="clue-history-team">${clue.team === 'red' ? '🔴' : '🔵'}</span>
                     <span class="clue-history-word">${clue.word}</span>
                     <span class="clue-history-number">${clue.number}</span>
                 </div>
-                ${canToggle ? `
+                ${canToggleThisClue ? `
                     <label class="clue-toggle">
                         <input type="checkbox" 
                             ${clue.stillApplies ? 'checked' : ''} 
@@ -641,7 +649,8 @@ function updateClueHistory() {
                     </label>
                 ` : ''}
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 }
 

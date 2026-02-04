@@ -885,34 +885,33 @@ body.sidebar-open .container {
 }
 
 .card.revealed.team-neutral {
-    background: linear-gradient(135deg, var(--neutral-color), var(--neutral-dark));
+    background: linear-gradient(135deg, #d4c4a8, #b8a67d);
+    border: 2px solid #a08860;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .card.revealed.team-neutral .card-word {
-    color: var(--text-dark);
-    text-shadow: none;
+    color: #3d3019;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
 }
 
 .card.revealed.team-assassin {
-    background: linear-gradient(135deg, var(--assassin-color), #000);
-    border: 3px solid #000;
-    box-shadow: 0 0 0 2px #000, var(--shadow-md);
+    background: #d8d8d8;
+    border: 1px solid #c0c0c0;
+    box-shadow: none;
 }
 
 .card.revealed.team-assassin .card-word {
-    text-shadow: 
-        -1px -1px 0 #000,
-        1px -1px 0 #000,
-        -1px 1px 0 #000,
-        1px 1px 0 #000,
-        2px 2px 4px rgba(0, 0, 0, 0.8);
+    color: #888;
+    text-shadow: none;
 }
 
 .card.revealed.team-assassin::after {
     content: '💀';
     position: absolute;
     font-size: 2rem;
-    opacity: 0.3;
+    opacity: 0.1;
 }
 
 /* Card Count Badge (for Spymaster) */
