@@ -163,6 +163,9 @@ async function saveGameState(retryCount = 0) {
     const syncState = getSyncableState();
     const maxRetries = 3;
     
+    // Update local lastAction immediately to prevent race conditions
+    GameState.lastAction = syncState.last_action;
+    
     // Always save to localStorage as backup
     localStorage.setItem(`codenames_${GameState.gameCode}`, JSON.stringify({
         ...syncState,
@@ -297,11 +300,17 @@ async function setupSupabaseSubscription() {
                     const newLastAction = new Date(payload.new.last_action).getTime();
                     const currentLastAction = GameState.lastAction ? new Date(GameState.lastAction).getTime() : 0;
                     
-                    if (newLastAction > currentLastAction) {
+                    // Use >= to catch updates even at the same millisecond
+                    if (newLastAction >= currentLastAction) {
+                        console.log(`Applying update - new: ${newLastAction}, current: ${currentLastAction}`);
                         applySyncedState(payload.new);
                         updateGameDisplay();
                         updatePlayerCounts();
-                        showToast("Game updated!", "success");
+                        
+                        // Only show toast if this is from another device (different timestamp)
+                        if (newLastAction > currentLastAction) {
+                            showToast("Game updated!", "success");
+                        }
                     }
                 }
             }
@@ -324,7 +333,9 @@ async function setupSupabaseSubscription() {
                         const newLastAction = new Date(data.last_action).getTime();
                         const currentLastAction = GameState.lastAction ? new Date(GameState.lastAction).getTime() : 0;
                         
-                        if (newLastAction > currentLastAction) {
+                        // Use >= to ensure we always get the latest state on subscription
+                        if (newLastAction >= currentLastAction) {
+                            console.log('Applying initial subscription state');
                             applySyncedState(data);
                             updateGameDisplay();
                         }
@@ -1225,10 +1236,12 @@ function startBackgroundSync() {
                 const newLastAction = new Date(data.last_action).getTime();
                 const currentLastAction = GameState.lastAction ? new Date(GameState.lastAction).getTime() : 0;
                 
-                if (newLastAction > currentLastAction) {
+                // Use >= to ensure we don't miss same-millisecond updates
+                if (newLastAction >= currentLastAction) {
                     console.log('Background sync found new data');
                     applySyncedState(data);
                     updateGameDisplay();
+                    updatePlayerCounts();
                 }
             }
         } catch (error) {
