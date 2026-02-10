@@ -522,7 +522,7 @@ function renderBoard() {
         
         if (GameState.revealed[i]) {
             card.classList.add('revealed');
-        } else if (isSpymaster) {
+        } else if (isSpymaster || GameState.gameOver) {
             card.classList.add('spymaster-view');
         }
         
