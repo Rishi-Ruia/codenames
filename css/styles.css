@@ -1600,6 +1600,10 @@ body.teams-sidebar-open.sidebar-open .container {
     flex-wrap: wrap;
 }
 
+.chat-channel-selector.hidden {
+    display: none;
+}
+
 .chat-channel-btn {
     flex: 1;
     min-width: 0;

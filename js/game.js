@@ -1587,6 +1587,10 @@ function updateChannelButtonVisibility() {
         btn.classList.toggle('hidden', !isSpymaster);
     });
 
+    // Hide the entire channel selector bar for non-spymasters (only one option, no choice needed)
+    const selector = document.querySelector('.chat-channel-selector');
+    if (selector) selector.classList.toggle('hidden', !isSpymaster);
+
     // If current active channel is no longer accessible, switch to 'all'
     if (ChatState.activeChannel === 'spymasters' && !isSpymaster) {
         switchChatChannel('all');
