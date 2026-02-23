@@ -1447,31 +1447,19 @@ const ChatState = {
 function canViewChannel(channel, role) {
     if (channel === 'all') return true;
     if (channel === 'spymasters') return role === 'red-spymaster' || role === 'blue-spymaster';
-    if (channel === 'red-team') return role === 'red-spymaster' || role === 'red-operative';
-    if (channel === 'blue-team') return role === 'blue-spymaster' || role === 'blue-operative';
     return false;
-}
-
-/** Get the stored channel name for the 'team' selector based on player role */
-function getTeamChannel(role) {
-    if (role && role.startsWith('red')) return 'red-team';
-    if (role && role.startsWith('blue')) return 'blue-team';
-    return null;
 }
 
 /** Sends a chat message to the given channel */
 async function sendChatMessage(text, channel) {
     if (!text.trim()) return;
 
-    const storedChannel = channel === 'team' ? getTeamChannel(GameState.playerRole) : channel;
-    if (!storedChannel) return;
-
     const message = {
         id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
         senderId: PLAYER_ID,
         senderName: getPlayerName(),
         senderRole: GameState.playerRole || 'spectator',
-        channel: storedChannel,
+        channel: channel,
         text: text.trim().substring(0, 200),
         timestamp: new Date().toISOString(),
     };
@@ -1534,12 +1522,6 @@ function channelTagHtml(channel) {
     if (channel === 'spymasters') {
         return `<span class="chat-msg-channel-tag channel-tag-spymasters">Spymasters</span>`;
     }
-    if (channel === 'red-team') {
-        return `<span class="chat-msg-channel-tag channel-tag-team tag-red">Red Team</span>`;
-    }
-    if (channel === 'blue-team') {
-        return `<span class="chat-msg-channel-tag channel-tag-team tag-blue">Blue Team</span>`;
-    }
     return '';
 }
 
@@ -1550,22 +1532,9 @@ function renderChatMessages() {
 
     const role = GameState.playerRole;
     const activeChannel = ChatState.activeChannel;
-    const teamChannel = getTeamChannel(role);
-
-    // Determine which stored channels map to the active channel selector
-    let visibleChannels;
-    if (activeChannel === 'all') {
-        visibleChannels = ['all'];
-    } else if (activeChannel === 'spymasters') {
-        visibleChannels = ['spymasters'];
-    } else if (activeChannel === 'team') {
-        visibleChannels = teamChannel ? [teamChannel] : [];
-    } else {
-        visibleChannels = [];
-    }
 
     const filtered = GameState.chatMessages.filter(m =>
-        visibleChannels.includes(m.channel) && canViewChannel(m.channel, role)
+        m.channel === activeChannel && canViewChannel(m.channel, role)
     );
 
     if (filtered.length === 0) {
@@ -1613,19 +1582,13 @@ function updateUnreadBadge() {
 function updateChannelButtonVisibility() {
     const role = GameState.playerRole;
     const isSpymaster = role === 'red-spymaster' || role === 'blue-spymaster';
-    const isOnTeam = role && role !== 'spectator';
 
     document.querySelectorAll('.chat-channel-btn.spymasters-only').forEach(btn => {
         btn.classList.toggle('hidden', !isSpymaster);
     });
-    document.querySelectorAll('.chat-channel-btn.team-only').forEach(btn => {
-        btn.classList.toggle('hidden', !isOnTeam);
-    });
 
     // If current active channel is no longer accessible, switch to 'all'
     if (ChatState.activeChannel === 'spymasters' && !isSpymaster) {
-        switchChatChannel('all');
-    } else if (ChatState.activeChannel === 'team' && !isOnTeam) {
         switchChatChannel('all');
     }
 }

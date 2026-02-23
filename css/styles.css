@@ -1705,16 +1705,6 @@ body.teams-sidebar-open.sidebar-open .container {
     color: #da8fff;
 }
 
-.channel-tag-team.tag-red {
-    background: rgba(220, 53, 69, 0.2);
-    color: #ff8896;
-}
-
-.channel-tag-team.tag-blue {
-    background: rgba(13, 110, 253, 0.2);
-    color: #74aaff;
-}
-
 .chat-bubble {
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.1);
