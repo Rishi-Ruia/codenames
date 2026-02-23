@@ -92,12 +92,15 @@
             </div>
         </div>
 
-        <!-- Teams Sidebar (outside game area) -->
+        <!-- Left Sidebar (Teams + Chat) -->
         <div id="teams-sidebar" class="teams-sidebar">
-            <div class="teams-header">
-                <h3>👥 Teams</h3>
+            <div class="left-panel-tabs">
+                <button id="tab-teams" class="left-tab-btn active" data-tab="teams">👥 Teams</button>
+                <button id="tab-chat" class="left-tab-btn" data-tab="chat">💬 Chat <span id="chat-unread-badge" class="chat-unread-badge hidden">0</span></button>
             </div>
-            <div id="teams-content" class="teams-content">
+
+            <!-- Teams Tab Content -->
+            <div id="teams-content" class="teams-content left-tab-content" data-content="teams">
                 <div class="team-section red-team-section">
                     <h4>🔴 Red Team</h4>
                     <div class="role-group">
@@ -125,10 +128,26 @@
                     <div id="team-spectator" class="team-player-list"></div>
                 </div>
             </div>
+
+            <!-- Chat Tab Content -->
+            <div id="chat-content" class="chat-content left-tab-content hidden" data-content="chat">
+                <div class="chat-channel-selector">
+                    <button class="chat-channel-btn active" data-channel="all">All</button>
+                    <button class="chat-channel-btn spymasters-only" data-channel="spymasters">Spymasters</button>
+                    <button class="chat-channel-btn team-only" data-channel="team">My Team</button>
+                </div>
+                <div id="chat-messages" class="chat-messages">
+                    <div class="chat-empty">No messages yet</div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Type a message..." maxlength="200">
+                    <button id="chat-send-btn" class="chat-send-btn">Send</button>
+                </div>
+            </div>
         </div>
-        
-        <!-- Toggle Button for Teams Sidebar -->
-        <button id="teams-toggle" class="teams-toggle" title="Toggle teams">
+
+        <!-- Toggle Button for Left Sidebar -->
+        <button id="teams-toggle" class="teams-toggle" title="Toggle panel">
             👥
         </button>
 

@@ -26,6 +26,7 @@ const GameState = {
     playerRole: null,
     clueHistory: [], // Array of {team, word, number, stillApplies}
     players: {}, // Object mapping playerId -> {role, name}
+    chatMessages: [], // Array of {id, senderId, senderName, senderRole, channel, text, timestamp}
 };
 
 // Generate or get unique player ID
@@ -119,6 +120,75 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+const NotificationState = {
+    sentKeys: new Set(),
+};
+
+async function maybeRequestNotificationPermission() {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'default') {
+        try {
+            await Notification.requestPermission();
+        } catch (error) {
+            console.log('Notification permission request failed:', error);
+        }
+    }
+}
+
+function showDesktopNotification(title, body, tag) {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+
+    if (document.visibilityState === 'visible' && document.hasFocus()) {
+        return;
+    }
+
+    try {
+        new Notification(title, {
+            body,
+            tag,
+            renotify: false,
+        });
+    } catch (error) {
+        console.log('Failed to show desktop notification:', error);
+    }
+}
+
+function getActionableNotification() {
+    if (GameState.gameOver || !GameState.playerRole || GameState.playerRole === 'spectator') {
+        return null;
+    }
+
+    const currentTeam = GameState.currentTurn;
+    const teamLabel = currentTeam.toUpperCase();
+
+    if (GameState.playerRole === `${currentTeam}-spymaster` && !GameState.currentClue) {
+        return {
+            key: `spymaster:${currentTeam}:${GameState.clueHistory.length}`,
+            title: 'Your turn to give a clue',
+            body: `${teamLabel} spymaster: give your clue now.`,
+        };
+    }
+
+    if (GameState.playerRole === `${currentTeam}-operative` && GameState.currentClue) {
+        return {
+            key: `operative:${currentTeam}:${GameState.currentClue}:${GameState.currentClueNumber}:${GameState.clueHistory.length}`,
+            title: 'New clue ready',
+            body: `${teamLabel} operative: ${GameState.currentClue} (${GameState.currentClueNumber}).`,
+        };
+    }
+
+    return null;
+}
+
+function maybeNotifyActionNeeded() {
+    const action = getActionableNotification();
+    if (!action) return;
+    if (NotificationState.sentKeys.has(action.key)) return;
+
+    NotificationState.sentKeys.add(action.key);
+    showDesktopNotification(action.title, action.body, action.key);
+}
+
 // ==========================================
 // SYNC STATE FUNCTIONS
 // ==========================================
@@ -143,7 +213,7 @@ function getSyncableState() {
 
 function applySyncedState(data) {
     if (!data) return;
-    
+
     GameState.revealed = data.revealed || Array(25).fill(false);
     GameState.currentTurn = data.current_turn || GameState.startingTeam;
     GameState.redRemaining = data.red_remaining ?? (GameState.startingTeam === 'red' ? 9 : 8);
@@ -156,6 +226,23 @@ function applySyncedState(data) {
     GameState.clueHistory = data.clue_history || [];
     GameState.players = data.players || {};
     GameState.lastAction = data.last_action || null;
+
+    // Update chat messages and trigger render if there are new ones
+    const previousCount = GameState.chatMessages.length;
+    GameState.chatMessages = data.chat_messages || [];
+    if (GameState.chatMessages.length > previousCount) {
+        renderChatMessages();
+        // Show unread badge if chat tab is not active
+        const chatContent = document.getElementById('chat-content');
+        if (chatContent && chatContent.classList.contains('hidden')) {
+            const newMsgs = GameState.chatMessages.slice(previousCount);
+            const visibleNew = newMsgs.filter(m => canViewChannel(m.channel, GameState.playerRole));
+            if (visibleNew.length > 0) {
+                ChatState.unreadCount += visibleNew.length;
+                updateUnreadBadge();
+            }
+        }
+    }
 }
 
 // Save to Supabase with retry logic
@@ -202,39 +289,59 @@ async function saveGameState(retryCount = 0) {
     }
 }
 
-// Notify other players about a new game (redirect them to new code)
-async function broadcastNewGame(oldGameCode, newGameCode) {
-    if (supabaseEnabled && supabaseClient) {
-        try {
-            // First check if old game exists
-            const { data: existingGame } = await supabaseClient
-                .from('games')
-                .select('game_code')
-                .eq('game_code', oldGameCode)
-                .maybeSingle();
-            
-            // Only update if the old game exists in Supabase
-            if (existingGame) {
-                const { error } = await supabaseClient
-                    .from('games')
-                    .update({ 
-                        new_game_redirect: newGameCode,
-                        last_action: new Date().toISOString()
-                    })
-                    .eq('game_code', oldGameCode);
-                
-                if (error) {
-                    console.error("Error broadcasting new game:", error);
-                } else {
-                    console.log(`Broadcasted new game redirect: ${oldGameCode} -> ${newGameCode}`);
-                }
-            } else {
-                console.log("Old game not in Supabase, skipping broadcast");
-            }
-        } catch (error) {
-            console.error("Error broadcasting new game:", error);
-        }
+// Resolve a single shared next game code for all players in the current game.
+// Uses an atomic "claim" update so concurrent clicks do not fork players into different games.
+async function getOrCreateSharedNextGameCode(oldGameCode) {
+    if (!supabaseEnabled || !supabaseClient) {
+        return { code: generateGameCode(), isCreator: true };
     }
+
+    try {
+        // If a redirect already exists, everyone should use it.
+        const { data: existing } = await supabaseClient
+            .from('games')
+            .select('new_game_redirect')
+            .eq('game_code', oldGameCode)
+            .maybeSingle();
+
+        if (existing?.new_game_redirect) {
+            return { code: existing.new_game_redirect, isCreator: false };
+        }
+
+        // Try to atomically claim redirect ownership.
+        const candidateCode = generateGameCode();
+        const { data: claimed, error: claimError } = await supabaseClient
+            .from('games')
+            .update({
+                new_game_redirect: candidateCode,
+                last_action: new Date().toISOString()
+            })
+            .eq('game_code', oldGameCode)
+            .is('new_game_redirect', null)
+            .select('new_game_redirect')
+            .maybeSingle();
+
+        if (!claimError && claimed?.new_game_redirect === candidateCode) {
+            console.log(`Claimed new game redirect ${oldGameCode} -> ${candidateCode}`);
+            return { code: candidateCode, isCreator: true };
+        }
+
+        // Another client likely claimed first; read and follow that redirect.
+        const { data: winner } = await supabaseClient
+            .from('games')
+            .select('new_game_redirect')
+            .eq('game_code', oldGameCode)
+            .maybeSingle();
+
+        if (winner?.new_game_redirect) {
+            return { code: winner.new_game_redirect, isCreator: false };
+        }
+    } catch (error) {
+        console.error('Error resolving shared next game code:', error);
+    }
+
+    // Fallback if old game row is missing or network is unstable.
+    return { code: generateGameCode(), isCreator: true };
 }
 
 // Load from localStorage
@@ -463,6 +570,7 @@ async function initializeGame(gameCode, isNewGame = false) {
     GameState.currentClueNumber = 0;
     GameState.guessesRemaining = 0;
     GameState.clueHistory = [];
+    GameState.chatMessages = [];
     
     // Set up real-time subscription
     if (supabaseEnabled && supabaseClient) {
@@ -684,6 +792,7 @@ function updateGameDisplay() {
     updateClueSection();
     updateEndTurnButton();
     updateClueHistory();
+    maybeNotifyActionNeeded();
     
     document.getElementById('game-code-small').textContent = GameState.gameCode;
     
@@ -908,6 +1017,8 @@ function setupEventListeners() {
             const role = btn.dataset.role;
             const nameInput = document.getElementById('player-name-input');
             const playerName = setPlayerName(nameInput.value);
+
+            await maybeRequestNotificationPermission();
             
             GameState.playerRole = role;
             GameState.players[PLAYER_ID] = { role: role, name: playerName };
@@ -997,19 +1108,18 @@ function setupEventListeners() {
     document.getElementById('new-game-from-board').addEventListener('click', async () => {
         if (confirm('Start a new game? This will generate new words and a new key. All players will be redirected to the new game.')) {
             const oldCode = GameState.gameCode;
-            const newCode = generateGameCode();
+            const { code: newCode, isCreator } = await getOrCreateSharedNextGameCode(oldCode);
             
             // Clean up current subscription
             if (gameSubscription && supabaseClient) {
                 await supabaseClient.removeChannel(gameSubscription);
             }
             
-            // Initialize and save the new game FIRST
-            await initializeGame(newCode, true);
-            await saveGameState();
-            
-            // THEN broadcast to other players after the game exists
-            await broadcastNewGame(oldCode, newCode);
+            // Initialize the shared new game. Only the claimant writes initial state.
+            await initializeGame(newCode, isCreator);
+            if (isCreator) {
+                await saveGameState();
+            }
             
             // Clean up old game data
             localStorage.removeItem(`codenames_${oldCode}`);
@@ -1040,20 +1150,19 @@ function setupEventListeners() {
     
     document.getElementById('new-words-btn').addEventListener('click', async () => {
         const oldCode = GameState.gameCode;
-        const newCode = generateGameCode();
+        const { code: newCode, isCreator } = await getOrCreateSharedNextGameCode(oldCode);
         
         // Clean up current subscription
         if (gameSubscription && supabaseClient) {
             await supabaseClient.removeChannel(gameSubscription);
         }
         
-        // Initialize and save the new game FIRST
-        await initializeGame(newCode, true);
-        await saveGameState();
+        // Initialize the shared new game. Only the claimant writes initial state.
+        await initializeGame(newCode, isCreator);
+        if (isCreator) {
+            await saveGameState();
+        }
         GameState.playerRole = null;
-        
-        // THEN broadcast to other players after the game exists
-        await broadcastNewGame(oldCode, newCode);
         
         // Clean up old game data
         localStorage.removeItem(`codenames_${oldCode}`);
@@ -1164,6 +1273,10 @@ function updatePlayerCounts() {
 }
 
 async function startGame() {
+    if (GameState.playerRole && GameState.playerRole !== 'spectator') {
+        maybeRequestNotificationPermission();
+    }
+
     // Always sync the latest state before starting
     if (supabaseEnabled && supabaseClient) {
         try {
@@ -1193,12 +1306,18 @@ async function startGame() {
         document.getElementById('clue-history-sidebar').classList.add('open');
         document.body.classList.add('sidebar-open');
     }
-    
+
     const teamsSidebarOpen = localStorage.getItem('teams_sidebar_open') === 'true';
     if (teamsSidebarOpen) {
         document.getElementById('teams-sidebar').classList.add('open');
         document.body.classList.add('teams-sidebar-open');
     }
+
+    // Restore left sidebar tab and chat state
+    const savedTab = localStorage.getItem('left_sidebar_tab') || 'teams';
+    switchLeftTab(savedTab);
+    updateChannelButtonVisibility();
+    renderChatMessages();
     
     // Start background sync interval to catch any missed updates
     startBackgroundSync();
@@ -1314,11 +1433,276 @@ async function syncLatestState() {
 // INITIALIZATION
 // ==========================================
 
+// Chat state (client-side only)
+const ChatState = {
+    activeChannel: 'all',
+    unreadCount: 0,
+};
+
+// ==========================================
+// CHAT FUNCTIONS
+// ==========================================
+
+/** Returns true if a player with `role` can view messages in `channel` */
+function canViewChannel(channel, role) {
+    if (channel === 'all') return true;
+    if (channel === 'spymasters') return role === 'red-spymaster' || role === 'blue-spymaster';
+    if (channel === 'red-team') return role === 'red-spymaster' || role === 'red-operative';
+    if (channel === 'blue-team') return role === 'blue-spymaster' || role === 'blue-operative';
+    return false;
+}
+
+/** Get the stored channel name for the 'team' selector based on player role */
+function getTeamChannel(role) {
+    if (role && role.startsWith('red')) return 'red-team';
+    if (role && role.startsWith('blue')) return 'blue-team';
+    return null;
+}
+
+/** Sends a chat message to the given channel */
+async function sendChatMessage(text, channel) {
+    if (!text.trim()) return;
+
+    const storedChannel = channel === 'team' ? getTeamChannel(GameState.playerRole) : channel;
+    if (!storedChannel) return;
+
+    const message = {
+        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        senderId: PLAYER_ID,
+        senderName: getPlayerName(),
+        senderRole: GameState.playerRole || 'spectator',
+        channel: storedChannel,
+        text: text.trim().substring(0, 200),
+        timestamp: new Date().toISOString(),
+    };
+
+    // Optimistically append locally
+    GameState.chatMessages.push(message);
+    renderChatMessages();
+
+    if (supabaseEnabled && supabaseClient) {
+        try {
+            // Fetch current messages to avoid overwriting concurrent messages
+            const { data } = await supabaseClient
+                .from('games')
+                .select('chat_messages')
+                .eq('game_code', GameState.gameCode)
+                .maybeSingle();
+
+            const existingMessages = (data && data.chat_messages) ? data.chat_messages : [];
+            // Merge: use existing as base, append new message if not already there
+            const alreadyExists = existingMessages.some(m => m.id === message.id);
+            const mergedMessages = alreadyExists ? existingMessages : [...existingMessages, message];
+
+            GameState.chatMessages = mergedMessages;
+
+            await supabaseClient
+                .from('games')
+                .update({ chat_messages: mergedMessages, last_action: new Date().toISOString() })
+                .eq('game_code', GameState.gameCode);
+        } catch (err) {
+            console.error('Chat send error:', err);
+        }
+    } else {
+        // Offline: save to localStorage
+        localStorage.setItem(`codenames_${GameState.gameCode}`, JSON.stringify({
+            ...getSyncableState(),
+            playerRole: GameState.playerRole,
+        }));
+    }
+}
+
+/** Returns a CSS class string based on the sender's role team */
+function senderColorClass(role) {
+    if (!role) return 'sender-neutral';
+    if (role.startsWith('red')) return 'sender-red';
+    if (role.startsWith('blue')) return 'sender-blue';
+    return 'sender-neutral';
+}
+
+/** Formats a timestamp for display */
+function formatMsgTime(isoString) {
+    const d = new Date(isoString);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Returns the channel tag HTML for a message */
+function channelTagHtml(channel) {
+    if (channel === 'all') {
+        return `<span class="chat-msg-channel-tag channel-tag-all">All</span>`;
+    }
+    if (channel === 'spymasters') {
+        return `<span class="chat-msg-channel-tag channel-tag-spymasters">Spymasters</span>`;
+    }
+    if (channel === 'red-team') {
+        return `<span class="chat-msg-channel-tag channel-tag-team tag-red">Red Team</span>`;
+    }
+    if (channel === 'blue-team') {
+        return `<span class="chat-msg-channel-tag channel-tag-team tag-blue">Blue Team</span>`;
+    }
+    return '';
+}
+
+/** Renders chat messages filtered by active channel and player role */
+function renderChatMessages() {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    const role = GameState.playerRole;
+    const activeChannel = ChatState.activeChannel;
+    const teamChannel = getTeamChannel(role);
+
+    // Determine which stored channels map to the active channel selector
+    let visibleChannels;
+    if (activeChannel === 'all') {
+        visibleChannels = ['all'];
+    } else if (activeChannel === 'spymasters') {
+        visibleChannels = ['spymasters'];
+    } else if (activeChannel === 'team') {
+        visibleChannels = teamChannel ? [teamChannel] : [];
+    } else {
+        visibleChannels = [];
+    }
+
+    const filtered = GameState.chatMessages.filter(m =>
+        visibleChannels.includes(m.channel) && canViewChannel(m.channel, role)
+    );
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="chat-empty">No messages yet</div>';
+        return;
+    }
+
+    container.innerHTML = filtered.map(m => {
+        const isOwn = m.senderId === PLAYER_ID;
+        return `<div class="chat-msg${isOwn ? ' own-msg' : ''}">
+            <div class="chat-msg-header">
+                <span class="chat-msg-sender ${senderColorClass(m.senderRole)}">${escapeHtml(m.senderName)}</span>
+                ${channelTagHtml(m.channel)}
+                <span>${formatMsgTime(m.timestamp)}</span>
+            </div>
+            <div class="chat-bubble">${escapeHtml(m.text)}</div>
+        </div>`;
+    }).join('');
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+/** Updates the unread message badge on the Chat tab */
+function updateUnreadBadge() {
+    const badge = document.getElementById('chat-unread-badge');
+    if (!badge) return;
+    if (ChatState.unreadCount > 0) {
+        badge.textContent = ChatState.unreadCount > 99 ? '99+' : ChatState.unreadCount;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+/** Updates which channel buttons are visible based on player role */
+function updateChannelButtonVisibility() {
+    const role = GameState.playerRole;
+    const isSpymaster = role === 'red-spymaster' || role === 'blue-spymaster';
+    const isOnTeam = role && role !== 'spectator';
+
+    document.querySelectorAll('.chat-channel-btn.spymasters-only').forEach(btn => {
+        btn.classList.toggle('hidden', !isSpymaster);
+    });
+    document.querySelectorAll('.chat-channel-btn.team-only').forEach(btn => {
+        btn.classList.toggle('hidden', !isOnTeam);
+    });
+
+    // If current active channel is no longer accessible, switch to 'all'
+    if (ChatState.activeChannel === 'spymasters' && !isSpymaster) {
+        switchChatChannel('all');
+    } else if (ChatState.activeChannel === 'team' && !isOnTeam) {
+        switchChatChannel('all');
+    }
+}
+
+/** Switches the active chat channel */
+function switchChatChannel(channel) {
+    ChatState.activeChannel = channel;
+    document.querySelectorAll('.chat-channel-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.channel === channel);
+    });
+    renderChatMessages();
+}
+
+/** Switches the left sidebar tab (teams or chat) */
+function switchLeftTab(tab) {
+    document.querySelectorAll('.left-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('.left-tab-content').forEach(el => {
+        el.classList.toggle('hidden', el.dataset.content !== tab);
+    });
+
+    // Update toggle button icon
+    const toggleBtn = document.getElementById('teams-toggle');
+    if (toggleBtn) {
+        toggleBtn.textContent = tab === 'chat' ? '💬' : '👥';
+    }
+
+    if (tab === 'chat') {
+        // Clear unread when opening chat
+        ChatState.unreadCount = 0;
+        updateUnreadBadge();
+        renderChatMessages();
+    }
+
+    localStorage.setItem('left_sidebar_tab', tab);
+}
+
+/** Sets up chat event listeners */
+function setupChatEventListeners() {
+    // Tab switching
+    document.querySelectorAll('.left-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchLeftTab(btn.dataset.tab));
+    });
+
+    // Channel selector
+    document.querySelectorAll('.chat-channel-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchChatChannel(btn.dataset.channel));
+    });
+
+    // Send button
+    document.getElementById('chat-send-btn').addEventListener('click', async () => {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        if (!GameState.gameCode) {
+            showToast('Join a game to chat!', 'warning');
+            return;
+        }
+        input.value = '';
+        await sendChatMessage(text, ChatState.activeChannel);
+    });
+
+    // Enter key in chat input
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            document.getElementById('chat-send-btn').click();
+        }
+    });
+}
+
 async function init() {
     // Wait for Supabase to initialize
     await new Promise(resolve => setTimeout(resolve, 200));
-    
+
     setupEventListeners();
+    setupChatEventListeners();
     setupVisibilityAndNetworkHandlers();
     updateSyncStatus(false);
     
