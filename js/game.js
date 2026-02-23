@@ -136,11 +136,7 @@ async function maybeRequestNotificationPermission() {
 }
 
 function showDesktopNotification(title, body, tag) {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-
-    if (document.visibilityState === 'visible' && document.hasFocus()) {
-        return;
-    }
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false;
 
     try {
         new Notification(title, {
@@ -148,8 +144,10 @@ function showDesktopNotification(title, body, tag) {
             tag,
             renotify: false,
         });
+        return true;
     } catch (error) {
         console.log('Failed to show desktop notification:', error);
+        return false;
     }
 }
 
@@ -185,8 +183,10 @@ function maybeNotifyActionNeeded() {
     if (!action) return;
     if (NotificationState.sentKeys.has(action.key)) return;
 
-    NotificationState.sentKeys.add(action.key);
-    showDesktopNotification(action.title, action.body, action.key);
+    const displayed = showDesktopNotification(action.title, action.body, action.key);
+    if (displayed) {
+        NotificationState.sentKeys.add(action.key);
+    }
 }
 
 // ==========================================
