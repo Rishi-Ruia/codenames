@@ -1185,9 +1185,20 @@ function showRoleSelection() {
     document.getElementById('display-game-code').textContent = GameState.gameCode;
     // Pre-fill name input with saved name
     document.getElementById('player-name-input').value = getPlayerName();
-    
+
     updatePlayerCounts();
-    
+
+    // Restore left sidebar state so chat is usable in the lobby
+    const teamsSidebarOpen = localStorage.getItem('teams_sidebar_open') === 'true';
+    if (teamsSidebarOpen) {
+        document.getElementById('teams-sidebar').classList.add('open');
+        document.body.classList.add('teams-sidebar-open');
+    }
+    const savedTab = localStorage.getItem('left_sidebar_tab') || 'teams';
+    switchLeftTab(savedTab);
+    updateChannelButtonVisibility();
+    renderChatMessages();
+
     const url = new URL(window.location);
     url.searchParams.set('game', GameState.gameCode);
     window.history.pushState({}, '', url);
