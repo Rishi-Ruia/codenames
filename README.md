@@ -1,2 +1,2 @@
 # codenames
-vibe coded code names
+Rishi-ruia.github.io/codenames
